@@ -291,6 +291,9 @@ export interface UsageEventTokens {
 }
 
 export interface UsageEvent {
+  session_id?: string
+  parent_session_id?: string
+  session_metadata_available?: boolean
   id?: string
   request_id?: string
   timestamp: string

@@ -1,5 +1,5 @@
 // prompt-viewer serves the forked UI and reuses the existing Keeper API.
-// It never opens the usage database or consumes CPA queues.
+// It optionally reads session metadata from SQLite in read-only mode; never consumes CPA queues.
 package main
 
 import (
@@ -17,7 +17,19 @@ import (
 )
 
 func handler(target *url.URL, assets fs.FS) http.Handler {
+	return handlerWithUsageDB(target, assets, nil)
+}
+
+func handlerWithUsageDB(target *url.URL, assets fs.FS, metadata *sessionMetadataStore) http.Handler {
 	proxy := httputil.NewSingleHostReverseProxy(target)
+	proxy.ModifyResponse = metadata.enrichResponse
+	director := proxy.Director
+	proxy.Director = func(r *http.Request) {
+		director(r)
+		if r.URL.Path == "/api/v1/usage/events" {
+			r.Header.Set("Accept-Encoding", "identity")
+		}
+	}
 	files := http.FileServer(http.FS(assets))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/api/") || r.URL.Path == "/health" {
@@ -45,12 +57,20 @@ func handler(target *url.URL, assets fs.FS) http.Handler {
 func main() {
 	listen := flag.String("listen", "127.0.0.1:8319", "HTTP listen address")
 	backend := flag.String("keeper", "http://127.0.0.1:8318", "Existing Keeper URL")
+	usageDB := flag.String("usage-db", "", "Existing Keeper SQLite path (read-only session metadata)")
 	flag.Parse()
+	metadata, err := openSessionMetadata(*usageDB)
+	if err != nil {
+		log.Printf("Session metadata unavailable: %v", err)
+	}
+	if metadata != nil {
+		defer metadata.db.Close()
+	}
 	target, err := url.Parse(*backend)
 	if err != nil || target.Host == "" || (target.Scheme != "http" && target.Scheme != "https") {
 		log.Fatal("invalid keeper URL")
 	}
-	server := &http.Server{Addr: *listen, Handler: handler(target, web.Static), ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second}
+	server := &http.Server{Addr: *listen, Handler: handlerWithUsageDB(target, web.Static, metadata), ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second}
 	log.Printf("Prompt viewer listening on %s; Keeper API %s", *listen, target.Host)
 	log.Fatal(server.ListenAndServe())
 }

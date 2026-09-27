@@ -1,3 +1,4 @@
+import { RequestBrowser } from './RequestBrowser';
 import React, {
   useCallback,
   useEffect,
@@ -1200,7 +1201,7 @@ export function RequestEventsDetailsCard({
         className={styles.requestEventsCard}
         variant="flush"
         title={t('usage_stats.request_events_title')}
-        subtitle={t('usage_stats.request_events_subtitle')}
+        subtitle={requestLogAccessEnabled ? '点击请求查看完整 Prompt、入参和原始日志。' : t('usage_stats.request_events_subtitle')}
         titleMeta={
           <span className={styles.requestEventsCountBadge}>
             {t('usage_stats.request_events_total_count', { count: totalCount })}
@@ -1208,7 +1209,7 @@ export function RequestEventsDetailsCard({
         }
         extra={
           <div className={styles.requestEventsActions}>
-            <MainActionButton
+            {!requestLogAccessEnabled && <MainActionButton
               type="button"
               data-request-events-column-settings-trigger="true"
               aria-label={t('usage_stats.request_events_columns')}
@@ -1220,7 +1221,7 @@ export function RequestEventsDetailsCard({
             >
               <IconSettings size={12} aria-hidden="true" />
               <span>{t('usage_stats.request_events_columns')}</span>
-            </MainActionButton>
+            </MainActionButton>}
             <RequestEventsExportMenu
               label={t('usage_stats.export')}
               csvLabel={t('usage_stats.export_csv')}
@@ -1295,7 +1296,9 @@ export function RequestEventsDetailsCard({
           </div>
         </div>
 
-        {loading && rows.length === 0 ? (
+        {requestLogAccessEnabled ? (
+          <RequestBrowser events={events} loading={loading} totalCount={totalCount} hasMore={hasMore} loadingMore={loadingMore} autoLoadMore={autoLoadMore} onLoadMore={onLoadMore} onOpen={onRequestLogOpen} />
+        ) : loading && rows.length === 0 ? (
           <div className={styles.hint}>{t('common.loading')}</div>
         ) : rows.length === 0 ? (
           <EmptyState
