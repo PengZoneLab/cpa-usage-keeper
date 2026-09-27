@@ -1,0 +1,8 @@
+{
+  "event_id": "9828",
+  "stream": true,
+  "request_id": "916fbcba",
+  "body_json_parse": true,
+  "prompt_field_present": true,
+  "status": 200
+}

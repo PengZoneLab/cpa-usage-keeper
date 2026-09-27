@@ -21,3 +21,21 @@
 - 真实请求 gpt-6-luna /v1/chat/completions 返回200与KEEPER_OK；事件9687、request_id=d4a525ad。
 - 浏览器使用原管理员密码登录，统计和筛选可用；请求弹窗显示系统/用户Prompt与原始参数。点击复制后系统剪贴板JSON模型核对一致；浏览器专用剪贴板接口为空，改用系统剪贴板核验。
 - 实际截图 prompt-detail.png；无伪造数据或页面注入。
+
+### 修复链追溯
+
+```mermaid
+flowchart LR
+ H1["N4-R1 独立审查：SPA深链404｜不通过"] --> H2["N4-F1 增加SPA回退与测试｜完成"] --> H3["N4-R2 /usage与/analysis路由测试｜通过"]
+ style H1 fill:#fff,stroke:#888
+ style H2 fill:#b7efc5,stroke:#268444
+ style H3 fill:#b7efc5,stroke:#268444
+```
+
+主Agent完成真实浏览器下载，13970字节，REQUEST BODY与发送JSON逐字段一致。生产原始日志留在本机Downloads，不入Git。
+
+## 第4轮：独立验收与交付
+- 独立Agent对b972192c执行登录、鉴权、真实非流式与流式请求正文、下载、缺失事件、8318保留、8319回环/SPA等检查，全部通过。
+- 独立测试覆盖Go viewer和TestRequestLog（含6MiB边界），Prompt解析7项；详情见ACCEPTANCE.md。
+- 最终运行代码保持b972192c，后续只归档文档证据。Fork分支已推送；README记录更新、构建、日志范围、依赖及停用回滚。
+- 有效DAG全部完成，历史SPA失败仍保留。范围内剩余阻断：无。

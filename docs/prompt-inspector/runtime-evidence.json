@@ -1,0 +1,18 @@
+{
+  "event_id": 9687,
+  "request_id": "d4a525ad",
+  "http_status": 200,
+  "reply": "KEEPER_OK",
+  "download_bytes": 13970,
+  "download_sha256": "b7a9d08436cb8721d6ca8bad9551ad2b986937980a5c25a307b8019989700655",
+  "original_parameters_match": true,
+  "ui_copy_verified_via": "system clipboard",
+  "screenshot": "prompt-detail.png",
+  "executed_by": "main Agent",
+  "date": "2026-09-27 Asia/Shanghai",
+  "functional_commit": "b972192c73ea58a52b73c4d37b5d8c363f287f63",
+  "upstream_baseline": "9e3cac11afe95b9cd836c05a671b7220d7421c8f",
+  "binary_sha256": "3068be1482a5e6d54fb3f98808c6774dfbb539d56e84888741e7cea4ed3f7430",
+  "ui_missing_history_event": 7182,
+  "ui_missing_history_message_verified": true
+}
