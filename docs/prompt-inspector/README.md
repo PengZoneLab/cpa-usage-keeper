@@ -4,10 +4,10 @@
 
 ## 结构与版本
 
-- 源码：`https://github.com/PengZoneLab/cpa-usage-keeper`，分支 `feat/prompt-inspector`。
+- 源码：`https://github.com/PengZoneLab/cpa-usage-keeper`，分支 `master`。
 - 上游：`https://github.com/Willxup/cpa-usage-keeper`，本期基于稳定标签 `v1.15.8`。
 - 本地：`/Users/ly/Documents/coderepo/cpa-usage-keeper-prompts`。
-- 8319 运行新命令 `cmd/prompt-viewer`，仅提供 Fork 界面并代理 `/api/` 到现有8318。不会启动第二份采集器或打开用量数据库。
+- 8319 运行新命令 `cmd/prompt-viewer`，仅提供 Fork 界面并代理 `/api/` 到现有8318。不会启动第二份采集器；通过 `-usage-db` 只读原数据库，为已授权返回的请求补充 Session 信息。
 - 8318 仍是 Homebrew Keeper v1.15.7，页面页脚版本来自该后端；前端基线为v1.15.8。
 - CPA 8317负责真实请求日志持久化，Keeper8318维护原有请求索引。无需修改客户端API地址。
 - 登录权限、API Key只读用户权限、日志访问限制均复用8318，8319仅绑定本机回环地址。8319代理全部Keeper API，因此界面管理操作仍作用于原8318，并不是只读镜像。
@@ -40,7 +40,7 @@ launchctl kickstart -k "gui/$(id -u)/local.keeper-prompt-viewer"
 
 ```sh
 git fetch upstream --tags
-git switch feat/prompt-inspector
+git switch master
 git merge <经检查的上游稳定标签>
 ```
 
@@ -53,7 +53,7 @@ git merge <经检查的上游稳定标签>
 - 日志超过上游6MiB预览限制时，继续提供完整原始日志下载，不截断成“完整预览”。
 - 请求日志存于CPA现有日志目录。本机 `logs-max-total-size-mb=0`，当前没有总容量上限；本期不自动删除用户日志。长期运行需要按使用量制定保留策略。
 - 原始日志可能包含请求头、凭据和业务内容，沿用管理员访问控制；不要上传生产日志到GitHub。本仓库只保存无敏感内容的人工验收请求及检查结果。
-- 本期没有跨请求全文搜索、会话重建或独立日志归档。
+- 支持全部请求时间倒序及 Session 分组倒序；列表预览前50字，详情保留全文。Session视图先加载当前筛选范围的完整请求索引。没有跨请求全文搜索、会话上下文重建或独立日志归档。
 
 ## 停用与回滚
 

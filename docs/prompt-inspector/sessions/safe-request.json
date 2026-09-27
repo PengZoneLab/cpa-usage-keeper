@@ -1,0 +1,15 @@
+{
+  "model": "gpt-6-luna",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Reply only KEEPER_OK."
+    },
+    {
+      "role": "user",
+      "content": "Keeper 列表预览验收：这是一条超过五十个文字的安全测试消息，用来验证列表只展示前五十字，而打开详情以后可以看到后面的完整内容。全文末尾标记：DETAIL_COMPLETE_20260927。"
+    }
+  ],
+  "stream": false,
+  "max_tokens": 16
+}

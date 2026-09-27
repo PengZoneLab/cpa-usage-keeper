@@ -1,0 +1,34 @@
+{
+  "time": "2026-09-27T17:36:15.980227",
+  "environment": "http://127.0.0.1:8319",
+  "apiSessionMetadataMatchesSQLite": 50,
+  "unauthenticatedStatus": 401,
+  "safeEvent": "10821",
+  "safeRequestId": "b27593e1",
+  "safePreviewCharacters": 50,
+  "safeDetailMarkerPresent": true,
+  "clipboardFullJSONMatches": true,
+  "downloadBytes": 14209,
+  "downloadMarkerPresent": true,
+  "browserIndex": {
+    "range": "today",
+    "events": 3843,
+    "groups": 51,
+    "multiRequestGroupCount": 118,
+    "visibleWithinGroupRows": 20
+  },
+  "binarySHA256": "adc1254a8092ed8c81eb1eb4542c0011b4b349b4b5e6a58ee66f6b1fdf48a954",
+  "finalTime": "2026-09-27T17:38:41.683916",
+  "finalBundle": "index-DWbIv5b1.js",
+  "finalBrowserIndex": {
+    "events": 3908,
+    "groups": 51
+  },
+  "finalPreviewMeasuredCharacters": 50,
+  "filterPreservesSessionMode": true,
+  "mobile": {
+    "viewportWidth": 382,
+    "scrollWidth": 382
+  },
+  "sourceCommit": "6690fe37"
+}
