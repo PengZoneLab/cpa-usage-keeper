@@ -1,0 +1,15 @@
+{
+  "model": "gpt-6-luna",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a verification assistant. Reply only KEEPER_OK."
+    },
+    {
+      "role": "user",
+      "content": "Keeper Prompt Inspector 验收 20260927：请回复 KEEPER_OK。"
+    }
+  ],
+  "stream": false,
+  "max_tokens": 32
+}
