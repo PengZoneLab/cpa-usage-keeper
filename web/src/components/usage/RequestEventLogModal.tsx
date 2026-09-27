@@ -7,7 +7,7 @@ import { IconCheck, IconChevronDown, IconCopy } from '@/components/ui/icons'
 import { useScrollBoundaryContainment } from '@/hooks/useScrollBoundaryContainment'
 import type { UsageEventRequestLogResponse } from '@/lib/types'
 import styles from '@/pages/UsagePage.module.scss'
-import { inspectPrompt } from './promptInspector'
+import { PromptReader } from './PromptReader'
 
 const REQUEST_LOG_VIRTUAL_LINE_HEIGHT = 18
 const REQUEST_LOG_VIRTUAL_OVERSCAN = 8
@@ -275,9 +275,7 @@ export function RequestEventLogModal({
   onDownload,
   downloading = false,
 }: RequestEventLogModalProps) {
-  const { t, i18n } = useTranslation()
-  const inspection = useMemo(() => inspectPrompt(response?.sections ?? []), [response])
-  const chinese = i18n.language.startsWith('zh')
+  const { t } = useTranslation()
   const open = Boolean(response || error || loadingEventId)
   const tooLarge = response?.too_large === true || (response?.previewable === false && response?.downloadable === true)
   const title = tooLarge ? t('usage_stats.request_events_log_too_large_title') : t('usage_stats.request_events_log_title')
@@ -294,8 +292,8 @@ export function RequestEventLogModal({
       open={open}
       title={title}
       onClose={handleClose}
-      width={tooLarge ? 360 : 920}
-      className={tooLarge ? styles.requestEventsLargeLogModal : undefined}
+      width={tooLarge ? 360 : 1100}
+      className={tooLarge ? styles.requestEventsLargeLogModal : styles.promptReaderModal}
       footer={
         tooLarge ? (
           <>
@@ -322,25 +320,18 @@ export function RequestEventLogModal({
           <div className={styles.requestEventsLargeLogPrompt} role="status" aria-live="polite">{t('usage_stats.request_events_log_too_large')}</div>
         ) : response ? (
           sections.length > 0 ? (
+            <PromptReader key={response.event_id} response={response} copyContent={copyRequestLogSectionContent} renderLongContent={(title, content) => <RequestLogSectionDisclosure key={title} title={title} content={content} defaultOpen />}>
             <div className={styles.requestEventsLogSections}>
-              <div className={styles.hint}>
-                {chinese ? 'Prompt 来自本次请求正文；历史未记录、服务端保存的上下文不会自动补全。完整入参保留原文，上游转换结果见下方日志。' : 'Prompt comes from this request body. Unrecorded history and server-held context are not reconstructed. Full parameters preserve the original body; transformed upstream requests remain below.'}
-              </div>
-              {inspection?.prompt ? <RequestLogSectionDisclosure
-                key={`${response.event_id}-prompt`} title="Prompt" content={inspection.prompt} defaultOpen
-              /> : <div className={styles.hint}>{chinese ? '未识别到结构化 Prompt，请查看完整入参或原始日志。' : 'No structured Prompt found. Inspect the full body or raw log.'}</div>}
-              {inspection ? <RequestLogSectionDisclosure
-                key={`${response.event_id}-params`} title={chinese ? '完整请求入参（原文）' : 'Full request parameters (original)'} content={inspection.raw} defaultOpen={!inspection.prompt}
-              /> : null}
               {sections.map((section, index) => (
                 <RequestLogSectionDisclosure
                   key={`${response.event_id}-${section.title}-${index}`}
                   title={formatRequestLogSectionTitle(section.title, t)}
                   content={section.content}
-                  defaultOpen={!inspection && index === 0}
+                  defaultOpen={index === 0}
                 />
               ))}
             </div>
+            </PromptReader>
           ) : (
             <div className={styles.hint}>{t('usage_stats.request_events_log_empty')}</div>
           )

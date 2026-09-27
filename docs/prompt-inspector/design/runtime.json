@@ -1,0 +1,16 @@
+{
+  "port": 8319,
+  "binary_sha256": "388860492f4cb201dbf3a27370eb31a22dda9d38f56c4b2219ed248e80968e89",
+  "request_id": "d4a525ad",
+  "copied_parameters_match": true,
+  "download_bytes": 13970,
+  "narrow_viewport": 390,
+  "dialog_width": 350,
+  "keyboard_tab_focus": "完整入参",
+  "themes": [
+    "light",
+    "dark"
+  ],
+  "executor": "main Agent",
+  "date": "2026-09-27"
+}

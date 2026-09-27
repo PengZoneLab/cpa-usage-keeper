@@ -4575,3 +4575,14 @@
   }
   @media (max-width: 360px) { padding-inline: 16px; }
 }
+
+.promptReaderModal {
+  :global(.modal-body) { padding: 0; }
+  :global(.modal-header) { padding: 20px 60px 20px 24px; }
+  :global(.modal-footer) { padding: 14px 24px; }
+}
+.requestEventsCard > :global(.card-header) {
+  padding: 26px 28px 22px;
+  :global(.keeper-card-title) { font-size: 22px; letter-spacing: -.025em; }
+  :global(.keeper-card-subtitle) { margin-top: 8px; line-height: 1.65; }
+}
