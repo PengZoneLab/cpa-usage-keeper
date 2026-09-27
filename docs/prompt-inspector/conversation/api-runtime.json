@@ -1,0 +1,65 @@
+{
+  "results": [
+    {
+      "id": 11598,
+      "available": true,
+      "inputChars": 21,
+      "outputChars": 2,
+      "fullInputChars": 185,
+      "seconds": 0.084,
+      "input": "第一轮：请计算 12 + 8，只回复数字。",
+      "output": "20"
+    },
+    {
+      "id": 11600,
+      "available": true,
+      "inputChars": 35,
+      "outputChars": 19,
+      "fullInputChars": 293,
+      "seconds": 0.053,
+      "input": "第二轮：把刚才的结果乘以 3。请回复“结果是 60”，并简要写出算式。",
+      "output": "结果是 60（20 × 3 = 60）"
+    },
+    {
+      "id": 11495,
+      "available": true,
+      "inputChars": 153,
+      "outputChars": 310,
+      "fullInputChars": 5332320,
+      "seconds": 0.194
+    }
+  ],
+  "unauthenticatedStatus": 401,
+  "binarySHA256": "8b7979cbcf6c0f15c8967833092e9cfd1735c0beebe85afda2160b0f3b378fef",
+  "finalBundle": "index-qX90KC4L.js",
+  "time": "2026-09-27T19:47:08.425022",
+  "browser": {
+    "twoRoundInputAndOutputVisible": true,
+    "manualRefreshKeepsExpandedSession": true,
+    "secondRoundFullInputContainsFirstAssistantAnswer": true,
+    "mobileWidth": 382,
+    "mobileScrollWidth": 382
+  },
+  "largeLogUI": {
+    "event": 11761,
+    "oldTooLarge": true,
+    "inputChars": 19,
+    "outputChars": 452,
+    "fullInputChars": 6582352,
+    "browserVisibleInputOutputPairs": 4,
+    "browserBodyLengths": [
+      19,
+      452,
+      56,
+      473,
+      30,
+      291,
+      30,
+      701
+    ],
+    "browserDownloadOnly": false,
+    "fullContextPages": 549,
+    "nextPageVerified": 2
+  },
+  "sourceCommit": "caf685f2"
+}

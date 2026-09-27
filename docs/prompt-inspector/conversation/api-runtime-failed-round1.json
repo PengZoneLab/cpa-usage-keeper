@@ -1,0 +1,30 @@
+[
+  {
+    "id": 11598,
+    "available": true,
+    "inputChars": 21,
+    "outputChars": 0,
+    "fullInputChars": 185,
+    "seconds": 0.079,
+    "input": "第一轮：请计算 12 + 8，只回复数字。",
+    "output": ""
+  },
+  {
+    "id": 11600,
+    "available": true,
+    "inputChars": 35,
+    "outputChars": 0,
+    "fullInputChars": 293,
+    "seconds": 0.055,
+    "input": "第二轮：把刚才的结果乘以 3。请回复“结果是 60”，并简要写出算式。",
+    "output": ""
+  },
+  {
+    "id": 11495,
+    "available": true,
+    "inputChars": 153,
+    "outputChars": 310,
+    "fullInputChars": 5332320,
+    "seconds": 0.183
+  }
+]

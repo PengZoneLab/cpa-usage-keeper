@@ -1,0 +1,65 @@
+{
+  "session": "bec7e241-0798-4e1f-b255-5929911801ad",
+  "rounds": [
+    {
+      "round": 1,
+      "request": {
+        "model": "gpt-6-luna",
+        "messages": [
+          {
+            "role": "system",
+            "content": "你是测试助手。简洁回答，只输出用户要求的答案。"
+          },
+          {
+            "role": "user",
+            "content": "第一轮：请计算 12 + 8，只回复数字。"
+          }
+        ],
+        "stream": false,
+        "max_tokens": 120
+      },
+      "answer": "20"
+    },
+    {
+      "round": 2,
+      "request": {
+        "model": "gpt-6-luna",
+        "messages": [
+          {
+            "role": "system",
+            "content": "你是测试助手。简洁回答，只输出用户要求的答案。"
+          },
+          {
+            "role": "user",
+            "content": "第一轮：请计算 12 + 8，只回复数字。"
+          },
+          {
+            "role": "assistant",
+            "content": "20"
+          },
+          {
+            "role": "user",
+            "content": "第二轮：把刚才的结果乘以 3。请回复“结果是 60”，并简要写出算式。"
+          }
+        ],
+        "stream": false,
+        "max_tokens": 120
+      },
+      "answer": "结果是 60（20 × 3 = 60）"
+    }
+  ],
+  "events": [
+    [
+      11600,
+      "f303fa68",
+      "bec7e241-0798-4e1f-b255-5929911801ad",
+      "2026-09-27T19:36:59.081289+08:00"
+    ],
+    [
+      11598,
+      "9dbf30a4",
+      "bec7e241-0798-4e1f-b255-5929911801ad",
+      "2026-09-27T19:36:57.37665+08:00"
+    ]
+  ]
+}
