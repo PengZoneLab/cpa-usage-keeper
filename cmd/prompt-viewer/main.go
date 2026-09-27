@@ -32,6 +32,10 @@ func handlerWithUsageDB(target *url.URL, assets fs.FS, metadata *sessionMetadata
 	}
 	files := http.FileServer(http.FS(assets))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if id, ok := conversationEventID(r.URL.Path); ok {
+			serveConversation(w, r, target, id)
+			return
+		}
 		if strings.HasPrefix(r.URL.Path, "/api/") || r.URL.Path == "/health" {
 			w.Header().Set("Cache-Control", "no-store")
 			proxy.ServeHTTP(w, r)

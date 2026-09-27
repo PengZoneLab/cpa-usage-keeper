@@ -556,6 +556,21 @@ export async function fetchErrorEvents(identityId: string, signal?: AbortSignal,
   return response.json()
 }
 
+export interface UsageEventConversation {
+  available: boolean
+  input: string
+  output: string
+  input_available: boolean
+  output_available: boolean
+  full_input: string
+  error?: string
+}
+export async function fetchUsageEventConversation(eventId: string, signal?: AbortSignal): Promise<UsageEventConversation> {
+  const response = await apiFetch(apiPath(`/usage/events/${encodeURIComponent(eventId)}/conversation`), { signal, cache: 'no-store' })
+  if (!response.ok) await parseApiError(response, `对话加载失败 (${response.status})`)
+  return response.json()
+}
+
 export async function fetchUsageEventRequestLog(eventId: string, signal?: AbortSignal): Promise<UsageEventRequestLogResponse> {
   const response = await apiFetch(apiPath(`/usage/events/${encodeURIComponent(eventId)}/request-log`), { signal, cache: 'no-store' })
   if (!response.ok) {
