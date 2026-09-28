@@ -39,8 +39,8 @@ function safeEnd(text: string, end: number) {
   const code = text.charCodeAt(end - 1)
   return code >= 0xd800 && code <= 0xdbff ? end - 1 : end
 }
-function ExpandableText({ text, label }: { text: string; label: string }) {
-  const [expanded, setExpanded] = useState(false)
+function ExpandableText({ text, label, initiallyExpanded = false }: { text: string; label: string; initiallyExpanded?: boolean }) {
+  const [expanded, setExpanded] = useState(initiallyExpanded)
   const [page, setPage] = useState(0)
   const long = text.length > 700
   const pageSize = 12000
@@ -133,13 +133,80 @@ function RequestRow({ event, onOpen, cache, conversation = false }: { event: Usa
     {data?.available && event.id && <RequestContext eventId={event.id} />}
   </div>
 }
+export function groupConversationTurns(events: UsageEvent[], data: Map<string, UsageEventConversation>) {
+  const turns: { key: string; identity?: string; reliable: boolean; events: UsageEvent[] }[] = []
+  for (const event of [...events].sort(compareRequests).reverse()) {
+    const item = data.get(event.id || '')
+    const turn = event.session_metadata_available === true && event.session_id && item?.turn_confidence === 'user_history' ? item.turn_key : undefined
+    const identity = turn ? `${event.session_id}:${turn}` : undefined
+    const previous = turns.at(-1)
+    if (identity && item?.turn_continuation === true && previous?.identity === identity) previous.events.unshift(event)
+    else turns.push({ key: `request:${event.id || event.request_id}`, identity, reliable: Boolean(identity), events: [event] })
+  }
+  return turns.reverse()
+}
+function TurnCard({ turn, data, onOpen, cache, onRefresh }: { onRefresh: (events: UsageEvent[]) => void; turn: ReturnType<typeof groupConversationTurns>[number]; data: Map<string, UsageEventConversation>; onOpen?: (event: UsageEvent) => void; cache: Map<string, UsageEventConversation> }) {
+  const [expanded, setExpanded] = useState(false)
+  const [callsOpen, setCallsOpen] = useState(false)
+  const latest = turn.events[0]
+  const ready = turn.events.some(event => data.has(event.id || ''))
+  const input = turn.events.map(event => data.get(event.id || '')?.input).find(Boolean) || ''
+  const answered = turn.events.find(event => { const item = data.get(event.id || ''); return item?.available && item.output_available && item.output.trim() })
+  const response = answered ? data.get(answered.id || '')?.output : ''
+  return <article className={styles.conversation} data-turn-key={turn.key}>
+    <header className={styles.requestHeader}><time>{new Date(latest.timestamp).toLocaleString()}</time><span>{turn.events.length} 次调用 · {turn.reliable ? '按用户历史归拢' : '无法可靠归轮，单独展示'}</span><button onClick={() => onRefresh(turn.events)}>刷新本组对话</button></header>
+    <div className={styles.exchange}>
+      <section className={`${styles.message} ${styles.input}`} data-message-role="user"><h4>用户提示词</h4>{expanded ? <ExpandableText text={input} label="输入" initiallyExpanded /> : <p className={styles.body}>{previewText(input) || (ready ? '没有可用的用户文本' : '正在加载对话…')}</p>}{input && <button className={styles.expand} aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>{expanded ? '收起问题' : '展开完整输入'}</button>}</section>
+      <section className={`${styles.message} ${styles.output}`} data-message-role="assistant"><h4>模型返回 <small>最新有效调用 · 不代表最终回答</small></h4><ExpandableText text={response || '暂未获取到有效模型返回，请展开调用查看或重试'} label="返回" /></section>
+    </div>
+    <details className={styles.context} onToggle={event => { if (event.target === event.currentTarget) setCallsOpen(event.currentTarget.open) }}><summary>相关调用 · {turn.events.length} 条</summary>{callsOpen && turn.events.map(event => <RequestRow key={event.id || event.request_id} event={event} onOpen={onOpen} cache={cache} conversation />)}</details>
+  </article>
+}
 function SessionGroup({ group, onOpen, cache }: { group: ReturnType<typeof groupRequests>[number]; onOpen?: (event: UsageEvent) => void; cache: Map<string, UsageEventConversation> }) {
   const [open, setOpen] = useState(false)
   const [limit, setLimit] = useState(20)
+  const [data, setData] = useState(() => new Map<string, UsageEventConversation>())
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [retry, setRetry] = useState(0)
+  const selected = useMemo(() => group.requests.slice(0, limit), [group.requests, limit])
+  useEffect(() => {
+    if (!open) return
+    const controller = new AbortController()
+    for (const event of selected) {
+      const id = event.id
+      if (!id || data.has(id)) continue
+      schedule(async () => {
+        if (controller.signal.aborted) return
+        try {
+          const result = getCached(cache, id) || await fetchUsageEventConversation(id, controller.signal)
+          if (controller.signal.aborted) return
+          storeConversation(cache, id, result)
+          setData(current => new Map(current).set(id, result))
+          if (!result.available) setErrors(current => ({ ...current, [id]: '原始日志不可用' }))
+        } catch (reason) {
+          if (!controller.signal.aborted) setErrors(current => ({ ...current, [id]: reason instanceof Error ? reason.message : '加载失败' }))
+        }
+      })
+    }
+    return () => controller.abort()
+    // Results intentionally do not restart this batch. New list pages and explicit retry do.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, selected, cache, retry])
+  const settled = selected.every(event => data.has(event.id || '') || errors[event.id || ''] || !event.id)
+  const turns = settled ? groupConversationTurns(selected, data) : []
+  const refreshTurns = (events: UsageEvent[]) => {
+    setData(current => { const next = new Map(current); events.forEach(event => { if (event.id) { next.delete(event.id); cache.delete(event.id) } }); return next })
+    setErrors(current => { const next = { ...current }; events.forEach(event => { if (event.id) delete next[event.id] }); return next })
+    setRetry(n => n + 1)
+  }
   return <details className={styles.group} onToggle={e => { if (e.target === e.currentTarget) setOpen(e.currentTarget.open) }}>
     <summary className={styles.sessionSummary}><span className={styles.sessionIcon} aria-hidden="true">↳</span><span className={styles.sessionTitle}><strong>{group.key.startsWith('session:') ? (group.requests[0].model || '对话') : group.label}</strong><span>{new Date(group.requests[0].timestamp).toLocaleString()} · {group.requests.length} 条请求{group.key.startsWith('session:') && ` · ${group.label.slice(0, 8)}…`}</span></span><span className={styles.chevron} aria-hidden="true">⌄</span></summary>
     {open && <div className={styles.sessionIdentity}>Session <code>{group.label}</code></div>}
-    {open && <>{group.requests.slice(0, limit).map(event => <RequestRow key={event.id ?? event.request_id} event={event} onOpen={onOpen} cache={cache} conversation />)}
+    {open && <>
+      <p className={styles.note}>已解析 {selected.filter(event => data.has(event.id || '')).length} / {selected.length} 次调用 · 轮次仅覆盖已加载记录</p>
+      {Object.keys(errors).length > 0 && <div className={styles.status} role="status">{Object.keys(errors).length} 条调用加载失败或日志不可用<button className={styles.expand} onClick={() => { setData(current => { const next = new Map(current); Object.keys(errors).forEach(id => { next.delete(id); cache.delete(id) }); return next }); setErrors({}); setRetry(n => n + 1) }}>重试失败调用</button></div>}
+      {!settled && <p className={styles.status} role="status">正在加载对话并归拢轮次…</p>}
+      {turns.map(turn => <TurnCard key={turn.key} turn={turn} data={data} onOpen={onOpen} cache={cache} onRefresh={refreshTurns} />)}
       {limit < group.requests.length && <button className={styles.more} onClick={() => setLimit(n => n + 20)}>显示更多请求</button>}</>}
   </details>
 }

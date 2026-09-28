@@ -64,11 +64,11 @@ func TestPersistentConversationCacheAuthorizationAndContext(t *testing.T) {
 	w = request(true)
 	var p conversationPayload
 	json.Unmarshal(w.Body.Bytes(), &p)
-	if len(p.FullInput) < 2<<20 || p.Input != "hello" || p.Output != "world" || len(p.RoleMessages) != 2 || p.RoleMessages[0].Role != "system" || p.RoleMessages[1].Content != "hello" {
+	if len(p.FullInput) < 2<<20 || p.Input != "hello" || p.Output != "world" || len(p.RoleMessages) != 2 || p.RoleMessages[0].Role != "system" || p.RoleMessages[1].Content != "hello" || p.TurnKey == "" || p.TurnConfidence != "user_history" {
 		t.Fatal("context lost")
 	}
 	w = request(false)
-	if strings.Contains(w.Body.String(), "role_messages") || w.Body.Len() > 1000 {
+	if strings.Contains(w.Body.String(), "role_messages") || w.Body.Len() > 1000 || !strings.Contains(w.Body.String(), `"turn_confidence":"user_history"`) {
 		t.Fatal("context contaminated lightweight cache")
 	}
 	allow = false

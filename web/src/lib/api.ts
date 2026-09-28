@@ -563,6 +563,9 @@ export interface UsageEventConversation {
   input_available: boolean
   output_available: boolean
   full_input: string
+  turn_confidence?: 'user_history' | 'unknown'
+  turn_continuation?: boolean
+  turn_key?: string
   role_messages?: { role: string; content: string }[]
   error?: string
 }

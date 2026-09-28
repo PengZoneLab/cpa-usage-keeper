@@ -22,15 +22,18 @@ type roleMessage struct {
 }
 
 type conversationPayload struct {
-	RoleMessages    []roleMessage `json:"role_messages,omitempty"`
-	CacheComplete   bool          `json:"-"`
-	Available       bool          `json:"available"`
-	Input           string        `json:"input"`
-	Output          string        `json:"output"`
-	FullInput       string        `json:"full_input"`
-	InputAvailable  bool          `json:"input_available"`
-	OutputAvailable bool          `json:"output_available"`
-	Error           string        `json:"error,omitempty"`
+	TurnContinuation bool          `json:"turn_continuation"`
+	TurnKey          string        `json:"turn_key,omitempty"`
+	TurnConfidence   string        `json:"turn_confidence"`
+	RoleMessages     []roleMessage `json:"role_messages,omitempty"`
+	CacheComplete    bool          `json:"-"`
+	Available        bool          `json:"available"`
+	Input            string        `json:"input"`
+	Output           string        `json:"output"`
+	FullInput        string        `json:"full_input"`
+	InputAvailable   bool          `json:"input_available"`
+	OutputAvailable  bool          `json:"output_available"`
+	Error            string        `json:"error,omitempty"`
 }
 type logSection struct {
 	Title   string `json:"title"`
@@ -121,8 +124,8 @@ func serveConversationCached(w http.ResponseWriter, r *http.Request, target *url
 		}
 		json.NewEncoder(w).Encode(p)
 	}
-	save := func(p conversationPayload) { cache.put(r.Context(), "roles-v2/"+target.String()+"/"+id, p); emit(p) }
-	if p, ok := cache.get(r.Context(), "roles-v2/"+target.String()+"/"+id, r.URL.Query().Get("context") == "1"); ok {
+	save := func(p conversationPayload) { cache.put(r.Context(), "turn-v2/"+target.String()+"/"+id, p); emit(p) }
+	if p, ok := cache.get(r.Context(), "turn-v2/"+target.String()+"/"+id, r.URL.Query().Get("context") == "1"); ok {
 		// This admin-protected upstream endpoint checks the same log-access permission
 		// without retrieving the potentially huge log. Never trust local cache as auth.
 		auth, e := fetch("POST", base+"/download-token")
@@ -456,10 +459,11 @@ func parseResponse(raw string) string {
 	return result
 }
 func parseConversation(sections []logSection) conversationPayload {
-	result := conversationPayload{Available: true}
+	result := conversationPayload{Available: true, TurnConfidence: "unknown"}
 	for _, s := range sections {
 		if strings.EqualFold(strings.TrimSpace(s.Title), "REQUEST BODY") {
 			result.FullInput = strings.TrimSpace(s.Content)
+			result.TurnKey, result.TurnConfidence, result.TurnContinuation = conversationTurn(result.FullInput)
 			var v any
 			if json.Unmarshal([]byte(s.Content), &v) == nil {
 				result.Input = latestUser(v)

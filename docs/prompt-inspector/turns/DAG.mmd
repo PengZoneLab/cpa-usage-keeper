@@ -1,0 +1,11 @@
+graph LR
+ A["A 数据与规则 ✓"] --> B["B 轮次识别 ✓"]
+ A --> C["C 会话阅读 ✓"]
+ B --> D["D 测试构建 ✓"]
+ C --> D
+ D --> E["E 8319部署 ✓"]
+ E --> F["F 独立验收 ✓"]
+ F --> G["G 整体验收 ✓"]
+ classDef done fill:#d8f3dc,stroke:#2e7d32
+ classDef pending fill:#fff,stroke:#888
+ class A,B,C,D,E,F,G done

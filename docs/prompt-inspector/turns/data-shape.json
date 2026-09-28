@@ -1,0 +1,165 @@
+[
+  {
+    "id": 13605,
+    "keys": [
+      "model",
+      "input",
+      "tool_choice",
+      "parallel_tool_calls",
+      "reasoning",
+      "store",
+      "stream",
+      "include",
+      "prompt_cache_key",
+      "text",
+      "client_metadata"
+    ],
+    "type_counts": {
+      "('developer', 'additional_tools')": 1,
+      "('developer', 'message')": 4,
+      "('user', 'message')": 4,
+      "('assistant', 'message')": 4,
+      "(None, 'agent_message')": 8,
+      "(None, 'custom_tool_call')": 63,
+      "(None, 'custom_tool_call_output')": 63,
+      "(None, 'function_call')": 12,
+      "(None, 'function_call_output')": 12,
+      "(None, 'reasoning')": 32
+    },
+    "user_count": 4,
+    "last_types": [
+      [
+        null,
+        "function_call"
+      ],
+      [
+        null,
+        "function_call_output"
+      ],
+      [
+        null,
+        "reasoning"
+      ],
+      [
+        null,
+        "custom_tool_call"
+      ],
+      [
+        null,
+        "custom_tool_call_output"
+      ]
+    ],
+    "input_chars": 7883
+  },
+  {
+    "id": 13601,
+    "keys": [
+      "model",
+      "input",
+      "tool_choice",
+      "parallel_tool_calls",
+      "reasoning",
+      "store",
+      "stream",
+      "include",
+      "prompt_cache_key",
+      "text",
+      "client_metadata"
+    ],
+    "type_counts": {
+      "('developer', 'additional_tools')": 1,
+      "('developer', 'message')": 6,
+      "('user', 'message')": 36,
+      "(None, 'custom_tool_call')": 14,
+      "(None, 'custom_tool_call_output')": 14,
+      "(None, 'agent_message')": 7,
+      "('assistant', 'message')": 9,
+      "(None, 'function_call')": 29,
+      "(None, 'function_call_output')": 29,
+      "(None, 'reasoning')": 12
+    },
+    "user_count": 36,
+    "last_types": [
+      [
+        null,
+        "function_call_output"
+      ],
+      [
+        null,
+        "function_call"
+      ],
+      [
+        null,
+        "function_call_output"
+      ],
+      [
+        null,
+        "function_call"
+      ],
+      [
+        null,
+        "function_call_output"
+      ]
+    ],
+    "input_chars": 528
+  },
+  {
+    "id": 11598,
+    "keys": [
+      "model",
+      "messages",
+      "stream",
+      "max_tokens"
+    ],
+    "type_counts": {
+      "('system', None)": 1,
+      "('user', None)": 1
+    },
+    "user_count": 1,
+    "last_types": [
+      [
+        "system",
+        null
+      ],
+      [
+        "user",
+        null
+      ]
+    ],
+    "input_chars": 21
+  },
+  {
+    "id": 11600,
+    "keys": [
+      "model",
+      "messages",
+      "stream",
+      "max_tokens"
+    ],
+    "type_counts": {
+      "('system', None)": 1,
+      "('user', None)": 2,
+      "('assistant', None)": 1
+    },
+    "user_count": 2,
+    "last_types": [
+      [
+        "system",
+        null
+      ],
+      [
+        "user",
+        null
+      ],
+      [
+        "assistant",
+        null
+      ],
+      [
+        "user",
+        null
+      ]
+    ],
+    "input_chars": 35
+  }
+]
