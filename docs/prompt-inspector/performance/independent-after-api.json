@@ -1,0 +1,71 @@
+{
+  "time": "2026-09-28T02:53:18.375630+00:00",
+  "environment": "localhost:8319; real Keeper data; no prompt text recorded",
+  "checks": [
+    {
+      "check": "index",
+      "status": 200,
+      "bytes": 48817,
+      "seconds": 0.011,
+      "cache": null,
+      "input_chars": 0,
+      "output_chars": 0,
+      "context_chars": 0,
+      "available": null,
+      "events": 50
+    },
+    {
+      "check": "large-cold",
+      "status": 200,
+      "bytes": 855,
+      "seconds": 0.002,
+      "cache": null,
+      "input_chars": 247,
+      "output_chars": 194,
+      "context_chars": 0,
+      "available": true,
+      "events": 0
+    },
+    {
+      "check": "large-hot",
+      "status": 200,
+      "bytes": 855,
+      "seconds": 0.001,
+      "cache": null,
+      "input_chars": 247,
+      "output_chars": 194,
+      "context_chars": 0,
+      "available": true,
+      "events": 0
+    },
+    {
+      "check": "safe-turn1",
+      "status": 200,
+      "bytes": 156,
+      "seconds": 0.001,
+      "cache": null,
+      "input_chars": 21,
+      "output_chars": 2,
+      "context_chars": 0,
+      "available": true,
+      "events": 0,
+      "input": "第一轮：请计算 12 + 8，只回复数字。",
+      "output": "20"
+    },
+    {
+      "check": "safe-turn2",
+      "status": 200,
+      "bytes": 230,
+      "seconds": 0.001,
+      "cache": null,
+      "input_chars": 35,
+      "output_chars": 19,
+      "context_chars": 0,
+      "available": true,
+      "events": 0,
+      "input": "第二轮：把刚才的结果乘以 3。请回复“结果是 60”，并简要写出算式。",
+      "output": "结果是 60（20 × 3 = 60）"
+    }
+  ],
+  "unauthenticated_status": 401
+}

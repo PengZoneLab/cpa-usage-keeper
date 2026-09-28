@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -16,6 +17,7 @@ const conversationMaxBytes = 128 << 20
 var conversationSlots = make(chan struct{}, 3)
 
 type conversationPayload struct {
+	CacheComplete   bool   `json:"-"`
 	Available       bool   `json:"available"`
 	Input           string `json:"input"`
 	Output          string `json:"output"`
@@ -42,6 +44,12 @@ func conversationEventID(path string) (string, bool) {
 // Every request is authorized by the existing Keeper request-log endpoint before
 // obtaining its single-use download URL. No local logs or alternate collectors.
 func serveConversation(w http.ResponseWriter, r *http.Request, target *url.URL, id string) {
+	serveConversationCached(w, r, target, id, nil)
+}
+func serveConversationCached(w http.ResponseWriter, r *http.Request, target *url.URL, id string, cache *conversationCache) {
+	ctx, cancel := context.WithTimeout(r.Context(), 45*time.Second)
+	defer cancel()
+	r = r.WithContext(ctx)
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
@@ -58,6 +66,7 @@ func serveConversation(w http.ResponseWriter, r *http.Request, target *url.URL, 
 	case conversationSlots <- struct{}{}:
 		defer func() { <-conversationSlots }()
 	case <-r.Context().Done():
+		fail(504, "Conversation request timed out; retry")
 		return
 	}
 	client := &http.Client{Timeout: 90 * time.Second, CheckRedirect: func(req *http.Request, via []*http.Request) error { return http.ErrUseLastResponse }}
@@ -97,6 +106,37 @@ func serveConversation(w http.ResponseWriter, r *http.Request, target *url.URL, 
 		return b, e
 	}
 	base := "/api/v1/usage/events/" + id + "/request-log"
+	emit := func(p conversationPayload) {
+		if r.URL.Query().Get("context") != "1" {
+			p.FullInput = ""
+		}
+		json.NewEncoder(w).Encode(p)
+	}
+	save := func(p conversationPayload) { cache.put(r.Context(), target.String()+"/"+id, p); emit(p) }
+	if p, ok := cache.get(r.Context(), target.String()+"/"+id, r.URL.Query().Get("context") == "1"); ok {
+		// This admin-protected upstream endpoint checks the same log-access permission
+		// without retrieving the potentially huge log. Never trust local cache as auth.
+		auth, e := fetch("POST", base+"/download-token")
+		if e != nil {
+			fail(502, "Could not authorize cached conversation")
+			return
+		}
+		status := auth.StatusCode
+		body, e := read(auth, 64<<10)
+		if status != 200 {
+			fail(status, "Keeper denied cached conversation")
+			return
+		}
+		var token struct {
+			URL string `json:"download_url"`
+		}
+		if e != nil || json.Unmarshal(body, &token) != nil || token.URL == "" {
+			fail(502, "Invalid cache authorization")
+			return
+		}
+		emit(p)
+		return
+	}
 	resp, err := fetch("GET", base)
 	if err != nil {
 		fail(502, "Keeper request log unavailable")
@@ -126,7 +166,7 @@ func serveConversation(w http.ResponseWriter, r *http.Request, target *url.URL, 
 		return
 	}
 	if !preview.TooLarge {
-		json.NewEncoder(w).Encode(parseConversation(preview.Sections))
+		save(parseConversation(preview.Sections))
 		return
 	}
 	resp, err = fetch("POST", base+"/download-token")
@@ -171,7 +211,7 @@ func serveConversation(w http.ResponseWriter, r *http.Request, target *url.URL, 
 		fail(413, "Request log exceeds the 128 MiB conversation limit; download the original log")
 		return
 	}
-	json.NewEncoder(w).Encode(parseConversation(splitLogSections(string(body))))
+	save(parseConversation(splitLogSections(string(body))))
 }
 
 func splitLogSections(raw string) []logSection {
@@ -427,6 +467,7 @@ func parseConversation(sections []logSection) conversationPayload {
 			s := sections[i]
 			if strings.EqualFold(strings.TrimSpace(s.Title), title) || (title == "API RESPONSE" && strings.HasPrefix(strings.ToUpper(strings.TrimSpace(s.Title)), "API RESPONSE ")) {
 				result.Output = parseResponse(s.Content)
+				result.CacheComplete = responseComplete(s.Content)
 				result.InputAvailable = result.Input != ""
 				result.OutputAvailable = result.Output != ""
 				return result
@@ -439,4 +480,37 @@ func parseConversation(sections []logSection) conversationPayload {
 	result.InputAvailable = result.Input != ""
 	result.OutputAvailable = result.Output != ""
 	return result
+}
+
+// Only a terminal SSE marker or a complete non-stream JSON response is stable.
+func responseComplete(raw string) bool {
+	raw = strings.TrimSpace(strings.ReplaceAll(raw, "\r\n", "\n"))
+	if i := strings.Index(raw, "\nBody:"); i >= 0 {
+		raw = strings.TrimSpace(raw[i+len("\nBody:"):])
+	}
+	raw = strings.TrimSpace(strings.TrimPrefix(raw, "Body:"))
+	if strings.HasPrefix(raw, "Status:") || strings.HasPrefix(raw, "HTTP/") {
+		if i := strings.Index(raw, "\n\n"); i >= 0 {
+			raw = strings.TrimSpace(raw[i+2:])
+		}
+	}
+	if json.Valid([]byte(raw)) {
+		return true
+	}
+	for _, line := range strings.Split(raw, "\n") {
+		if !strings.HasPrefix(strings.TrimSpace(line), "data:") {
+			continue
+		}
+		data := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(line), "data:"))
+		if data == "[DONE]" {
+			return true
+		}
+		var event struct {
+			Type string `json:"type"`
+		}
+		if json.Unmarshal([]byte(data), &event) == nil && (event.Type == "response.completed" || event.Type == "response.done" || event.Type == "message_stop") {
+			return true
+		}
+	}
+	return false
 }

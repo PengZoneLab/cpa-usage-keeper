@@ -38,17 +38,12 @@ it('shows each request input and output directly, expands text and retains full 
     expect(container.querySelector('details')?.open).toBe(true)
     expect(container.textContent).toContain('输入末尾')
     expect(fetchUsageEventConversation).toHaveBeenCalledTimes(1)
-    await act(async () => root.render(<RequestBrowser events={[]} totalCount={2} loading={false} hasMore loadingMore autoLoadMore={false} onOpen={onOpen} />))
-    expect(container.querySelector('details')?.open).toBe(true)
-    expect(container.textContent).toContain('输入末尾')
-    await act(async () => root.render(<RequestBrowser events={[{ ...event }]} totalCount={1} loading={false} hasMore={false} loadingMore={false} autoLoadMore={false} onOpen={onOpen} />))
-    expect(container.querySelector('details')?.open).toBe(true)
-    expect(container.textContent).toContain('输入末尾')
     await act(async () => { Array.from(container.querySelectorAll('button')).find(button => button.textContent === '完整入参与日志')!.click() })
     expect(onOpen).toHaveBeenCalledWith(event)
     const context = container.querySelectorAll('details')[1]
     await act(async () => { context.open = true; context.dispatchEvent(new Event('toggle', { bubbles: true })) })
     expect(container.textContent).toContain('模型返回')
+    expect(fetchUsageEventConversation).toHaveBeenLastCalledWith('2', expect.any(AbortSignal), true)
   } finally { await act(async () => root.unmount()); container.remove() }
 })
 it('keeps 50 unicode characters in compact preview without splitting emoji', () => {

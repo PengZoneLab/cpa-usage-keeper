@@ -1,0 +1,13 @@
+flowchart TD
+ A["A 准备与现状核对 · 已完成"] --> B["B 持久缓存与轻量接口 · 已完成"]
+ A --> C["C 分页与增量刷新 · 已完成"]
+ B --> D["D 页面集成与错误处理 · 已完成"]
+ C --> D
+ D --> E["E 构建与回归自检 · 已完成"]
+ E --> F["F 部署 8319 · 已完成"]
+ F --> G["G 独立验收与运行截图 · 待手机5G复验"]
+ G --> H["H 整体验收 · 阻塞"]
+ classDef done fill:#dcfce7,stroke:#16a34a,color:#222;
+ classDef pending fill:#fff,stroke:#888,color:#222;
+ class A,B,C,D,E,F done;
+ class G,H pending;

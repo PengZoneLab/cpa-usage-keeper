@@ -72,6 +72,8 @@ describe('UsagePage runtime behavior', () => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true;
     await i18n.changeLanguage('en');
     localStorage.clear();
+    sessionStorage.setItem('keeper-prompt-browser-mode', 'time');
+    vi.stubGlobal('IntersectionObserver', class { observe() {} disconnect() {} });
     window.history.replaceState(null, '', '/request-events');
     api.fetchUsageEventRequestLog.mockReset();
     container = document.createElement('div');
@@ -84,6 +86,8 @@ describe('UsagePage runtime behavior', () => {
     container.remove();
     localStorage.clear();
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    sessionStorage.clear();
   });
 
   const render = async () => {
@@ -95,7 +99,7 @@ describe('UsagePage runtime behavior', () => {
     api.fetchUsageEventRequestLog.mockReturnValue(pending.promise);
     await render();
 
-    const openButton = container.querySelector<HTMLButtonElement>('[aria-label="Success. View request log"]');
+    const openButton = container.querySelector<HTMLButtonElement>('[aria-label="查看请求 42 详情"]');
     expect(openButton).not.toBeNull();
     await act(async () => openButton!.click());
 

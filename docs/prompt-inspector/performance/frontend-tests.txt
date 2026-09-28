@@ -1,0 +1,26 @@
+
+> web@0.0.0 test
+> vitest run src/components/usage/test/RequestBrowser.test.tsx src/components/usage/test/RequestBrowser.acceptance.test.tsx src/components/usage/test/RequestBrowserConversation.test.tsx src/components/usage/test/requestRefresh.test.ts src/pages/test/UsagePageRequestEventsAPIKey.test.tsx src/pages/test/UsagePageRuntime.test.tsx
+
+
+ RUN  v3.2.7 /Users/ly/Documents/coderepo/cpa-usage-keeper-prompts/web
+
+ ✓ src/components/usage/test/requestRefresh.test.ts (2 tests) 3ms
+ ✓ src/components/usage/test/RequestBrowserConversation.test.tsx (2 tests) 34ms
+ ✓ src/components/usage/test/RequestBrowser.test.tsx (1 test) 26ms
+ ✓ src/components/usage/test/RequestBrowser.acceptance.test.tsx (1 test) 27ms
+ ✓ src/pages/test/UsagePageRuntime.test.tsx (4 tests) 157ms
+stderr | src/pages/test/UsagePageRequestEventsAPIKey.test.tsx > UsagePage top API Key request event filter > isolates Overview and Realtime requests while retaining the shared API Key filter
+Error: socket hang up
+    at Socket.socketCloseListener (node:_http_client:491:27)
+    at Socket.emit (node:events:531:35)
+    at TCP.<anonymous> (node:net:346:12) {
+  code: 'ECONNRESET'
+}
+
+ ✓ src/pages/test/UsagePageRequestEventsAPIKey.test.tsx (14 tests) 550ms
+
+ Test Files  6 passed (6)
+      Tests  24 passed (24)
+   Start at  10:45:43
+   Duration  1.73s (transform 781ms, setup 0ms, collect 2.25s, tests 798ms, environment 900ms, prepare 328ms)

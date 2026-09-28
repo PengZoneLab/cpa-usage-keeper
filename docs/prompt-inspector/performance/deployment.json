@@ -1,0 +1,25 @@
+{
+  "time": "2026-09-28T02:47:12.383879+00:00",
+  "binary_sha256": "0ea50c130d324ea9930a8dea51cb68715df5f8d709851b3e8f0e5e9fda640946",
+  "checks": {
+    "ui": {
+      "status": 200,
+      "bytes": 457
+    },
+    "health": {
+      "status": 200,
+      "bytes": 457
+    },
+    "unauthenticated_conversation": {
+      "status": 401
+    }
+  },
+  "bundle": [
+    "/assets/index-DF300fWs.js"
+  ],
+  "cache_database": {
+    "exists": true,
+    "path": "/Users/ly/.local/share/keeper-prompt-viewer/conversations.db",
+    "permissions": "0o600"
+  }
+}

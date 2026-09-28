@@ -116,14 +116,31 @@ describe('UsagePage top API Key request event filter', () => {
     expect(storedFilters()).toEqual({ model: 'gpt-5', source: 'source-1', result: 'failed' });
 
     await act(async () => triggerHeaderRefresh());
-    expect(api.fetchUsageEvents).toHaveBeenCalledTimes(calls + 2);
+    expect(api.fetchUsageEvents).toHaveBeenCalledTimes(calls + 3);
     expect(api.fetchUsageEvents).toHaveBeenLastCalledWith(range, expect.any(AbortSignal), expect.objectContaining({ ...filters, apiKeyId: '33' }));
-    expect(api.fetchUsageEvents.mock.lastCall![2].cursor).toBeUndefined();
+    expect(api.fetchUsageEvents.mock.lastCall![2].cursor).toBe('cursor-101');
     await act(async () => button('Load more').click());
     expect(api.fetchUsageEvents).toHaveBeenLastCalledWith(range, expect.any(AbortSignal), expect.objectContaining({ ...filters, apiKeyId: '33', cursor: 'cursor-101' }));
     await act(async () => button('Export').click());
     await act(async () => button(`Export ${format.toUpperCase()}`).click());
     expect(api.exportUsageEvents).toHaveBeenLastCalledWith(range, format, { ...filters, apiKeyId: '33' });
+  });
+
+  it('refreshes more than fifty new records across pages and preserves the history cursor', async () => {
+    const record = (id: number) => ({ ...firstPage.events[0], id: String(id), timestamp: new Date(id * 1000).toISOString() });
+    api.fetchUsageEvents.mockImplementation(async () => ({ ...firstPage, events: [record(100), record(99)], next_cursor: 'older-history' }));
+    await render();
+    api.fetchUsageEvents.mockClear();
+    api.fetchUsageEvents.mockImplementation(async (_range, _signal, options) => {
+      if (!options.cursor) return { ...firstPage, total_count: 200, events: Array.from({ length: 50 }, (_, n) => record(170 - n)), next_cursor: 'new-page-2' };
+      if (options.cursor === 'new-page-2') return { ...firstPage, total_count: 200, events: Array.from({ length: 23 }, (_, n) => record(120 - n)), next_cursor: 'overlap-end' };
+      return { ...firstPage, events: [record(98)], has_more: false, next_cursor: null };
+    });
+    await act(async () => triggerHeaderRefresh());
+    expect(api.fetchUsageEvents).toHaveBeenCalledTimes(2);
+    expect(api.fetchUsageEvents.mock.lastCall![2].cursor).toBe('new-page-2');
+    await act(async () => button('Load more').click());
+    expect(api.fetchUsageEvents.mock.lastCall![2].cursor).toBe('older-history');
   });
 
   it('restores the top selection and clears only Model, Source and Status', async () => {
@@ -228,7 +245,7 @@ describe('UsagePage top API Key request event filter', () => {
     await act(async () => vi.advanceTimersByTimeAsync(15_000));
     expect(api.fetchUsageEvents.mock.calls.length).toBeGreaterThan(calls);
     expect(api.fetchUsageEvents.mock.lastCall![2]).toMatchObject({ apiKeyId: '33' });
-    expect(api.fetchUsageEvents.mock.lastCall![2].cursor).toBeUndefined();
+    expect(api.fetchUsageEvents.mock.lastCall![2].cursor).toBe('cursor-101');
   });
 
   it('applies a changed top range together with the top key to queries and export', async () => {

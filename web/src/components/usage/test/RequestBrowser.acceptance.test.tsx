@@ -11,21 +11,21 @@ beforeEach(() => {
   box = document.createElement('div'); document.body.append(box); root = createRoot(box)
 })
 afterEach(async () => { await act(async () => root.unmount()); box.remove() })
-it('loads full index before grouping, avoids duplicate requests, resumes identical first page after refresh', async () => {
+it('keeps partial groups visible during refresh without automatic historical downloads', async () => {
   const onLoadMore = vi.fn()
   const events = [{ id: '2', timestamp: '2026-09-27T00:00:00Z', session_id: 'session-a', session_metadata_available: true }] as UsageEvent[]
   const render = async (loading: boolean, hasMore = true, autoLoadMore = true) => {
     await act(async () => root.render(<RequestBrowser events={events} loading={loading} totalCount={2} hasMore={hasMore} loadingMore={false} autoLoadMore={autoLoadMore} onLoadMore={onLoadMore} />))
   }
   await render(false)
-  expect(onLoadMore).toHaveBeenCalledTimes(1)
-  expect(box.querySelector('details')).toBeNull()
+  expect(onLoadMore).not.toHaveBeenCalled()
+  expect(box.querySelector('details')).not.toBeNull()
   await render(false)
-  expect(onLoadMore).toHaveBeenCalledTimes(1)
+  expect(onLoadMore).not.toHaveBeenCalled()
   await render(true); await render(false)
-  expect(onLoadMore).toHaveBeenCalledTimes(2)
+  expect(onLoadMore).not.toHaveBeenCalled()
   await render(false, true, false)
-  expect(onLoadMore).toHaveBeenCalledTimes(2)
+  expect(onLoadMore).not.toHaveBeenCalled()
   await render(false, false)
   expect(box.querySelectorAll('details')).toHaveLength(1)
   expect(box.textContent).toContain('session-a')

@@ -1,0 +1,11 @@
+{
+  "time": "2026-09-28T02:53:40.408543+00:00",
+  "executor": "/root/performance_review",
+  "check": "explicit full context",
+  "status": 200,
+  "bytes": 1912234,
+  "context_chars": 1775185,
+  "input_chars": 247,
+  "output_chars": 194,
+  "seconds": 0.014
+}

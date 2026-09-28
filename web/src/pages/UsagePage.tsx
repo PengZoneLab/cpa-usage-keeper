@@ -1,3 +1,4 @@
+import { reachedRefreshBoundary } from '@/components/usage/requestRefresh';
 import { CredentialEditModal } from '@/components/usage/credentials/CredentialEditModal';
 import { UsageComparisonCharts } from '@/components/usage/UsageComparisonCharts';
 import { useState, useMemo, useCallback, useEffect, useRef, type MouseEvent as ReactMouseEvent } from 'react';
@@ -932,9 +933,14 @@ export function UsagePage({ onAuthRequired }: { onAuthRequired?: () => void }) {
   const [eventsError, setEventsError] = useState('');
   const [eventsData, setEventsData] = useState<UsageEvent[]>([]);
   const [eventsPage, setEventsPage] = useState(1);
+  const eventsSnapshotRef = useRef<UsageEvent[]>([]);
+  const eventsQueryKeyRef = useRef('');
+  const eventsCursorRef = useRef<string | null>(null);
+  useEffect(() => { eventsSnapshotRef.current = eventsData; }, [eventsData]);
   const [eventsTotalCount, setEventsTotalCount] = useState(0);
   const [eventsNextCursor, setEventsNextCursor] = useState<string | null>(null);
   const eventsHasMore = Boolean(eventsNextCursor);
+  useEffect(() => { eventsCursorRef.current = eventsNextCursor; }, [eventsNextCursor]);
   const [eventsLoadingMore, setEventsLoadingMore] = useState(false);
   const [eventsAutoLoadMore, setEventsAutoLoadMore] = useState(true);
   const [eventsModelOptions, setEventsModelOptions] = useState<string[]>([]);
@@ -1472,31 +1478,49 @@ export function UsagePage({ onAuthRequired }: { onAuthRequired?: () => void }) {
     const controller = new AbortController();
     eventsRequestControllerRef.current = controller;
 
+    const queryKey = JSON.stringify([usageRangeQuery, eventsModelFilter, eventsSourceFilter, eventsResultFilter, requestApiKeyId]);
+    const previous = eventsQueryKeyRef.current === queryKey ? eventsSnapshotRef.current : [];
+    eventsQueryKeyRef.current = queryKey;
+    if (!previous.length) { setEventsData([]); eventsSnapshotRef.current = []; setEventsNextCursor(null); }
     setEventsLoading(true);
     setEventsLoadingMore(false);
     setEventsError('');
     setEventsAutoLoadMore(true);
     try {
-      const response = await fetchUsageEvents(usageRangeQuery, controller.signal, {
+      const options = {
         pageSize: REQUEST_EVENTS_DEFAULT_PAGE_SIZE,
         cursorMode: true,
         model: eventsModelFilter === ALL_REQUEST_EVENTS_FILTER ? undefined : eventsModelFilter,
         source: eventsSourceFilter === ALL_REQUEST_EVENTS_FILTER ? undefined : eventsSourceFilter,
         result: eventsResultFilter === ALL_REQUEST_EVENTS_FILTER ? undefined : eventsResultFilter,
         apiKeyId: requestApiKeyId,
-      });
+      };
+      let response = await fetchUsageEvents(usageRangeQuery, controller.signal, options);
+      const totalCount = response.total_count;
+      let incoming = response.events;
+
+      const seenCursors = new Set<string>();
+      while (previous.length && !reachedRefreshBoundary(incoming, previous) && response.has_more && response.next_cursor) {
+        if (seenCursors.has(response.next_cursor)) throw new Error('请求分页游标重复，请重试');
+        seenCursors.add(response.next_cursor);
+        response = await fetchUsageEvents(usageRangeQuery, controller.signal, { ...options, cursor: response.next_cursor });
+        incoming = appendUniqueUsageEvents(incoming, response.events);
+      }
       if (eventsRequestControllerRef.current !== controller) {
         return;
       }
-      setEventsData(response.events);
-      setEventsTotalCount(Math.max(response.total_count, 0));
-      setEventsNextCursor(response.has_more === true ? response.next_cursor?.trim() || null : null);
+      // New records win on ID conflicts; retain previously loaded history and stable row keys.
+      const merged = appendUniqueUsageEvents(incoming, previous);
+      eventsSnapshotRef.current = merged;
+      setEventsData(merged);
+      setEventsTotalCount(Math.max(totalCount, 0));
+      setEventsNextCursor(previous.length ? eventsCursorRef.current : response.has_more === true ? response.next_cursor?.trim() || null : null);
       setEventsPage(1);
     } catch (error) {
       if (controller.signal.aborted) {
         return;
       }
-      if (eventsRequestControllerRef.current === controller) {
+      if (eventsRequestControllerRef.current === controller && !previous.length) {
         setEventsData([]);
         setEventsTotalCount(0);
         setEventsNextCursor(null);

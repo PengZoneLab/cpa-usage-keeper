@@ -565,10 +565,24 @@ export interface UsageEventConversation {
   full_input: string
   error?: string
 }
-export async function fetchUsageEventConversation(eventId: string, signal?: AbortSignal): Promise<UsageEventConversation> {
-  const response = await apiFetch(apiPath(`/usage/events/${encodeURIComponent(eventId)}/conversation`), { signal, cache: 'no-store' })
-  if (!response.ok) await parseApiError(response, `对话加载失败 (${response.status})`)
-  return response.json()
+export async function fetchUsageEventConversation(eventId: string, signal?: AbortSignal, context = false): Promise<UsageEventConversation> {
+  const controller = new AbortController()
+  const abort = () => controller.abort()
+  signal?.addEventListener('abort', abort, { once: true })
+  if (signal?.aborted) controller.abort()
+  let timedOut = false
+  const timeout = setTimeout(() => { timedOut = true; controller.abort() }, context ? 90000 : 30000)
+  try {
+    const response = await apiFetch(apiPath(`/usage/events/${encodeURIComponent(eventId)}/conversation${context ? '?context=1' : ''}`), { signal: controller.signal, cache: 'no-store' })
+    if (!response.ok) await parseApiError(response, `对话加载失败 (${response.status})`)
+    return await response.json()
+  } catch (error) {
+    if (timedOut) throw new Error('加载超时，请重试')
+    throw error
+  } finally {
+    clearTimeout(timeout)
+    signal?.removeEventListener('abort', abort)
+  }
 }
 
 export async function fetchUsageEventRequestLog(eventId: string, signal?: AbortSignal): Promise<UsageEventRequestLogResponse> {

@@ -1,0 +1,13 @@
+{
+  "time": "2026-09-28T10:47:15.437906+08:00",
+  "base": "1cad978f59a2e9ebba0a243a4bd32abb30856fae",
+  "sha256": {
+    "cmd/prompt-viewer/conversation.go": "9059e0a3462ee4a554afce8e364ec1011b9159742084a4d6d6fe3e1b89697b90",
+    "cmd/prompt-viewer/conversation_cache.go": "8f7f239fd0892d266a502a919bb96ed92c3e63b326a12774ff1066547dffdd4d",
+    "cmd/prompt-viewer/main.go": "819522373b238361538576d8542eec89036ff061a484b7a1bb6c4721eb561404",
+    "web/src/components/usage/RequestBrowser.tsx": "d8d6c0a9a78e3411441f9a0325141e50bd4a1c048ef710881d94930d195da352",
+    "web/src/components/usage/requestRefresh.ts": "d5625a61650367780b67265b73af572c328949ca7f576274202fc3d326e4e7aa",
+    "web/src/lib/api.ts": "4cb7a94567687a6f9b3860cc94a52a2763d2a40e96a09bcda05e2fa8b7fd959d",
+    "web/src/pages/UsagePage.tsx": "db40fff3241af81080fdc24a43bc8599aa6e056a52fd2887c01e544a69e2bd29"
+  }
+}

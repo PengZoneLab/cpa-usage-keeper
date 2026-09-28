@@ -1,0 +1,35 @@
+{
+  "time": "2026-09-28T02:41:34.672331+00:00",
+  "environment": "localhost:8319; real Keeper data; no prompt text recorded",
+  "checks": [
+    {
+      "check": "index",
+      "status": 200,
+      "bytes": 49473,
+      "seconds": 0.022,
+      "cache": null,
+      "input_chars": 0,
+      "output_chars": 0,
+      "context_chars": 0,
+      "available": null,
+      "events": 50
+    },
+    {
+      "check": "large-cold",
+      "error": "HTTP Error 500: Internal Server Error"
+    },
+    {
+      "check": "large-hot",
+      "error": "HTTP Error 500: Internal Server Error"
+    },
+    {
+      "check": "safe-turn1",
+      "error": "HTTP Error 500: Internal Server Error"
+    },
+    {
+      "check": "safe-turn2",
+      "error": "HTTP Error 500: Internal Server Error"
+    }
+  ],
+  "unauthenticated_status": 401
+}
