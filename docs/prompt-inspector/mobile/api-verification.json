@@ -1,0 +1,23 @@
+{
+  "11600-False": {
+    "bytes": 230,
+    "roles": [],
+    "full_input_chars": 0
+  },
+  "11600-True": {
+    "bytes": 1055,
+    "roles": [
+      "system",
+      "user",
+      "assistant",
+      "user"
+    ],
+    "full_input_chars": 293
+  },
+  "11878-False": {
+    "bytes": 855,
+    "roles": [],
+    "full_input_chars": 0
+  },
+  "pass": true
+}

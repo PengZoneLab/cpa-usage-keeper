@@ -4586,3 +4586,34 @@
   :global(.keeper-card-title) { font-size: 22px; letter-spacing: -.025em; }
   :global(.keeper-card-subtitle) { margin-top: 8px; line-height: 1.65; }
 }
+
+.readerFilterToggle { display: none; }
+@media (max-width: 700px) {
+  .pageShell[data-request-reader] {
+    padding-inline: 10px;
+    .requestEventsCard > :global(.card-header) { padding: 18px 12px 10px; gap: 8px; }
+    .requestEventsCard :global(.keeper-card-title) { font-size: 20px; }
+    .requestEventsCard :global(.keeper-card-subtitle) { font-size: 12px; margin-top: 5px; }
+    .requestEventsActions { gap: 4px; }
+    .requestEventsCountBadge { font-size: 11px; }
+    .readerFilterToggle { display: flex; width: calc(100% - 24px); min-height: 44px; align-items: center; justify-content: space-between; margin: 0 12px 4px; border: 0; border-bottom: 1px solid var(--border-color); background: transparent; color: var(--text-secondary); font-size: 12px; cursor: pointer; }
+    .readerFilterToggle:focus-visible { outline: 2px solid #4278bf; outline-offset: 2px; }
+    .readerFilters { display: none; }
+    .readerFiltersOpen { display: block; padding: 10px 12px; }
+    .readerFilters .requestEventsFiltersGroup { display: grid; grid-template-columns: minmax(0, 1fr); width: 100%; gap: 10px; }
+    .readerFilters .requestEventsFilterItem { min-width: 0; width: 100%; }
+    .readerFilters button { min-height: 44px; }
+  }
+}
+@media (max-width: 700px) {
+  .pageShell[data-request-reader] [data-dashboard-toolbar] { position: relative; top: auto; margin-bottom: 0; }
+  .pageShell[data-request-reader] [data-dashboard-page-trigger],
+  .pageShell[data-request-reader] [data-dashboard-refresh] { min-height: 44px; }
+}
+@media (max-width: 700px) {
+  .pageShell[data-request-reader] .requestEventsCard > :global(.card-header) { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; }
+  .pageShell[data-request-reader] .requestEventsCard :global(.keeper-card-actions) { width: auto; margin: 0; align-self: start; }
+  .pageShell[data-request-reader] .requestEventsCard :global(.keeper-card-title-track) { flex-wrap: wrap; gap: 6px; }
+  .pageShell[data-request-reader] .requestEventsCard :global(.keeper-card-title-meta) { margin: 0; }
+  .pageShell[data-request-reader] .requestEventsActions button { min-height: 44px; }
+}

@@ -23,6 +23,7 @@ it('shows the first page immediately and only loads older records on demand', as
     await act(async () => { Array.from(container.querySelectorAll('button')).find(button => button.textContent === '加载更早请求')!.click() })
     expect(onLoadMore).toHaveBeenCalledTimes(1)
     await act(async () => root.render(<RequestBrowser {...props} hasMore={false} />))
-    expect(container.querySelector('summary')?.textContent).toContain('session-a')
+    expect(container.querySelector('summary')?.textContent).toContain('1 条请求')
+    expect(container.querySelector('summary')?.textContent).not.toContain('session-a')
   } finally { await act(async () => root.unmount()); container.remove(); vi.unstubAllGlobals() }
 })

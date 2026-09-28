@@ -50,21 +50,39 @@ function ExpandableText({ text, label }: { text: string; label: string }) {
     {long && <button className={styles.expand} aria-expanded={expanded} onClick={() => { setExpanded(value => !value); setPage(0) }}>{expanded ? '收起' : `展开完整${label}`}</button>}
     {expanded && pages > 1 && <nav className={styles.textPages} aria-label={`${label}全文分页`}><button disabled={page === 0} onClick={() => setPage(n => n - 1)}>上一段</button><span>全文第 {page + 1} / {pages} 段</span><button disabled={page + 1 === pages} onClick={() => setPage(n => n + 1)}>下一段</button></nav>}</>
 }
+const roleLabels: Record<string, string> = { system: '系统提示词', developer: '开发者提示词', user: '用户提示词', assistant: '历史模型回复', tool: '工具结果' }
+function RoleMessage({ role, content }: { role: string; content: string }) {
+  const tone = role === 'system' || role === 'developer' ? styles.system : role === 'assistant' ? styles.output : role === 'user' ? styles.input : styles.tool
+  return <section className={`${styles.message} ${tone}`} data-message-role={role}><h4>{roleLabels[role] || role}</h4><ExpandableText text={content} label={roleLabels[role] || role} /></section>
+}
 function RequestContext({ eventId }: { eventId: string }) {
   const [open, setOpen] = useState(false)
-  const [text, setText] = useState<string | null>(null)
+  const [data, setData] = useState<UsageEventConversation | null>(null)
+  const [raw, setRaw] = useState(false)
   const [error, setError] = useState('')
   const [retry, setRetry] = useState(0)
+  const [limit, setLimit] = useState(20)
   useEffect(() => {
-    if (!open || text !== null) return
+    if (!open || data !== null) return
     const controller = new AbortController()
     void fetchUsageEventConversation(eventId, controller.signal, true).then(result => {
       if (!result.available || !result.full_input) throw new Error('没有可用的完整请求上下文，请稍后重试')
-      setText(result.full_input)
+      setData(result)
     }).catch(reason => { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : '上下文加载失败') })
     return () => controller.abort()
-  }, [open, text, eventId, retry])
-  return <details className={styles.context} onToggle={event => { if (event.target === event.currentTarget) setOpen(event.currentTarget.open) }}><summary>查看完整请求上下文与入参</summary>{open && (text !== null ? <ExpandableText text={text} label="请求上下文" /> : <div role="status">{error || '正在加载完整上下文…'}{error && <button onClick={() => { setError(''); setRetry(n => n + 1) }}>重试加载上下文</button>}</div>)}</details>
+  }, [open, data, eventId, retry])
+  const messages = data?.role_messages || []
+  return <details className={styles.context} onToggle={event => { if (event.target === event.currentTarget) setOpen(event.currentTarget.open) }}>
+    <summary><span>系统提示词与历史上下文</span><span className={styles.contextHint}>按需加载</span></summary>
+    {open && (data ? <div className={styles.contextContent}>
+      <div className={styles.contextTabs} aria-label="上下文显示方式"><button aria-pressed={!raw} onClick={() => setRaw(false)}>按角色阅读</button><button aria-pressed={raw} onClick={() => setRaw(true)}>原始入参</button></div>
+      {raw ? <ExpandableText text={data.full_input} label="原始入参" /> : <>
+        <p className={styles.note}>完整请求历史 · 按原始顺序排列</p>
+        {messages.length ? messages.slice(0, limit).map((message, index) => <RoleMessage key={index} {...message} />) : <p className={styles.note}>未识别到角色消息，可查看原始入参。</p>}
+        {limit < messages.length && <button className={styles.more} onClick={() => setLimit(n => n + 20)}>继续阅读历史（{limit} / {messages.length}）</button>}
+      </>}
+    </div> : <div className={styles.status} role="status">{error || '正在加载完整上下文…'}{error && <button className={styles.expand} onClick={() => { setError(''); setRetry(n => n + 1) }}>重试加载上下文</button>}</div>)}
+  </details>
 }
 function RequestRow({ event, onOpen, cache, conversation = false }: { event: UsageEvent; onOpen?: (event: UsageEvent) => void; cache: Map<string, UsageEventConversation>; conversation?: boolean }) {
   const element = useRef<HTMLDivElement>(null)
@@ -108,18 +126,19 @@ function RequestRow({ event, onOpen, cache, conversation = false }: { event: Usa
   return <div ref={element} className={styles.conversation}>
     <header className={styles.requestHeader}><time>{new Date(event.timestamp).toLocaleString()}</time><span>{event.model} · {event.stream ? '流式' : '非流式'}{event.failed ? ' · 请求失败' : ''}</span><button onClick={() => onOpen?.(event)}>完整入参与日志</button></header>
     {status ? <div className={styles.status} role="status">{status}{(error || unavailable) && retryButton}</div> : <div className={styles.exchange}>
-      <section className={styles.input}><h4>输入 Prompt</h4><ExpandableText text={data?.input || '此请求没有用户文本（可能是工具结果或多模态输入）'} label="输入" />
-        {event.id && <RequestContext eventId={event.id} />}
+      <section className={`${styles.message} ${styles.input}`} data-message-role="user"><h4>用户提示词 <small>本轮输入 Prompt</small></h4><ExpandableText text={data?.input || '此请求没有用户文本（可能是工具结果或多模态输入）'} label="输入" />
       </section>
-      <section className={styles.output}><h4>模型返回</h4>{retryButton}<ExpandableText text={data?.output || '日志中没有模型返回正文'} label="返回" /></section>
+      <section className={`${styles.message} ${styles.output}`} data-message-role="assistant"><div className={styles.messageHeading}><h4>模型返回</h4>{retryButton}</div><ExpandableText text={data?.output || '日志中没有模型返回正文'} label="返回" /></section>
     </div>}
+    {data?.available && event.id && <RequestContext eventId={event.id} />}
   </div>
 }
 function SessionGroup({ group, onOpen, cache }: { group: ReturnType<typeof groupRequests>[number]; onOpen?: (event: UsageEvent) => void; cache: Map<string, UsageEventConversation> }) {
   const [open, setOpen] = useState(false)
   const [limit, setLimit] = useState(20)
   return <details className={styles.group} onToggle={e => { if (e.target === e.currentTarget) setOpen(e.currentTarget.open) }}>
-    <summary><strong>{group.requests.length} 条请求</strong><span>最近活动 {new Date(group.requests[0].timestamp).toLocaleString()}</span><small>{group.label}</small></summary>
+    <summary className={styles.sessionSummary}><span className={styles.sessionIcon} aria-hidden="true">↳</span><span className={styles.sessionTitle}><strong>{group.key.startsWith('session:') ? (group.requests[0].model || '对话') : group.label}</strong><span>{new Date(group.requests[0].timestamp).toLocaleString()} · {group.requests.length} 条请求{group.key.startsWith('session:') && ` · ${group.label.slice(0, 8)}…`}</span></span><span className={styles.chevron} aria-hidden="true">⌄</span></summary>
+    {open && <div className={styles.sessionIdentity}>Session <code>{group.label}</code></div>}
     {open && <>{group.requests.slice(0, limit).map(event => <RequestRow key={event.id ?? event.request_id} event={event} onOpen={onOpen} cache={cache} conversation />)}
       {limit < group.requests.length && <button className={styles.more} onClick={() => setLimit(n => n + 20)}>显示更多请求</button>}</>}
   </details>
@@ -141,9 +160,11 @@ export function RequestBrowser({ events, loading, totalCount, hasMore, loadingMo
   const groups = useMemo(() => groupRequests(events), [events])
   return <div className={styles.browser}>
     <div className={styles.toolbar}>
+      <div className={styles.segmented} aria-label="请求查看方式">
       <button aria-pressed={mode === 'time'} onClick={() => changeMode('time')}>全部请求</button>
-      <button aria-pressed={mode === 'session'} onClick={() => changeMode('session')}>Session 视图</button>
-      <span className={styles.note}>{mode === 'session' ? '时间倒序 · 展开 Session 阅读输入与模型返回' : '时间倒序 · Prompt 预览前 50 字 · 点击查看完整详情'}</span>
+      <button aria-pressed={mode === 'session'} onClick={() => changeMode('session')}>会话 Session</button>
+      </div>
+      <span className={styles.note}>{mode === 'session' ? '最近优先 · 展开阅读对话' : '最近优先 · 预览前 50 字'}</span>
     </div>
     {loading && events.length > 0 && <p className={styles.note} role="status">正在获取新增请求，当前阅读内容保持显示…</p>}
     {loading && events.length === 0 ? <p role="status">正在加载请求…</p> : events.length === 0 ? <p>当前筛选范围内没有请求。</p> : mode === 'session' ? <>

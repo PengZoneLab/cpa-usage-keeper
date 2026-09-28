@@ -1,0 +1,236 @@
+The following is a diff from the previous accessibility tree for Window: "KEEPER" with ~ and + representing changed and added elements, respectively. Removed elements are summarized by ID range.
+Removed element IDs: 166-240, 350-401, 403-405, 419-486, 519-526, 542-556
++																542 文本 0 ms
++																543 文本 20,000 ms
++																544 文本 40,000 ms
++																545 文本 60,000 ms
++																546 文本 80,000 ms
++																547 文本 100,000 ms
++																548 文本 120,000 ms
++																549 文本 140,000 ms
++																550 文本 160,000 ms
++																551 文本 180,000 ms
+~														134 滑块 Right Resizer, Value: 100, Details: 171,057 ms, Secondary Actions: Increment, Decrement
++																552 row
++																	553 单元格 http://127.0.0.1:8319/api/v1/usage/events?range=yesterday&page_size=50&cursor_mode=true&model=gpt-6-luna
++																		554 图像 Fetch
++																		555 文本 events?range=yesterday&page_size=50&cursor_mode=true&model=gpt-6-luna
++																	556 单元格 200 OK
++																		557 文本 200
++																	558 单元格
++																		559 文本 fetch
++																	560 单元格
++																		561 链接 index-C16TBoKd.js:9, Help: http://127.0.0.1:8319/assets/index-C16TBoKd.js:9
++																			562 文本 index-C16TBoKd.js:9
++																	563 单元格 4.7 kB transferred over network, resource size: 4.6 kB
++																		564 文本 4.7 kB
++																	565 单元格
++																		566 文本 102 ms
++																567 row
++																	568 单元格 http://127.0.0.1:8319/api/v1/usage/events?range=yesterday&page_size=50&cursor_mode=true&model=gpt-6-luna
++																		569 图像 Fetch
++																		570 文本 events?range=yesterday&page_size=50&cursor_mode=true&model=gpt-6-luna
++																	571 单元格 200 OK
++																		572 文本 200
++																	573 单元格
++																		574 文本 fetch
++																	575 单元格
++																		576 链接 index-C16TBoKd.js:9, Help: http://127.0.0.1:8319/assets/index-C16TBoKd.js:9
++																			577 文本 index-C16TBoKd.js:9
++																	578 单元格 4.7 kB transferred over network, resource size: 4.6 kB
++																		579 文本 4.7 kB
++																	580 单元格
++																		581 文本 37 ms
++																582 row
++																	583 单元格 http://127.0.0.1:8319/api/v1/usage/events/filters/models
++																		584 图像 Fetch
++																		585 文本 models
++																	586 单元格 200 OK
++																		587 文本 200
++																	588 单元格
++																		589 文本 fetch
++																	590 单元格
++																		591 链接 index-C16TBoKd.js:9, Help: http://127.0.0.1:8319/assets/index-C16TBoKd.js:9
++																			592 文本 index-C16TBoKd.js:9
++																	593 单元格 0.3 kB transferred over network, resource size: 0.1 kB
++																		594 文本 0.3 kB
++																	595 单元格
++																		596 文本 36 ms
++																597 row
++																	598 单元格 http://127.0.0.1:8319/api/v1/usage/events/filters/sources
++																		599 图像 Fetch
++																		600 文本 sources
++																	601 单元格 200 OK
++																		602 文本 200
++																	603 单元格
++																		604 文本 fetch
++																	605 单元格
++																		606 链接 index-C16TBoKd.js:9, Help: http://127.0.0.1:8319/assets/index-C16TBoKd.js:9
++																			607 文本 index-C16TBoKd.js:9
++																	608 单元格 0.6 kB transferred over network, resource size: 0.4 kB
++																		609 文本 0.6 kB
++																	610 单元格
++																		611 文本 30 ms
++																612 row
++																	613 单元格 http://127.0.0.1:8319/api/v1/usage/events?range=yesterday&page_size=50&cursor_mode=true&model=gpt-6-luna
++																		614 图像 Fetch
++																		615 文本 events?range=yesterday&page_size=50&cursor_mode=true&model=gpt-6-luna
++																	616 单元格 200 OK
++																		617 文本 200
++																	618 单元格
++																		619 文本 fetch
++																	620 单元格
++																		621 链接 index-C16TBoKd.js:9, Help: http://127.0.0.1:8319/assets/index-C16TBoKd.js:9
++																			622 文本 index-C16TBoKd.js:9
++																	623 单元格 4.7 kB transferred over network, resource size: 4.6 kB
++																		624 文本 4.7 kB
++																	625 单元格
++																		626 文本 30 ms
++														627 container 35 requests
++															628 文本 35 requests
++														629 container 1682958 B transferred over network
++															630 文本 1.7 MB transferred
++														631 container 1714348 B resources loaded by the page
++															632 文本 1.7 MB resources
++														633 container Finish: 2.3 min
++															634 文本 Finish: 2.3 min
++														635 container DOMContentLoaded: 196 ms
++															636 文本 DOMContentLoaded: 196 ms
++														637 container Load: 196 ms
++															638 文本 Load: 196 ms
++						639 文本 Network data available
++					640 container
++						641 container
++							642 link KEEPER, Value: github.com/Willxup/cpa-usage-keeper
++							643 link Back To CPA Management, Value: 127.0.0.1:8319/management.html
++							644 弹出式按钮 Language: English
++							645 按钮 Theme: Auto, Help: Auto → Light
++							646 弹出式按钮 More actions
++						647 container
++							648 container
++								649 弹出式按钮 Request Events · Switch page
++								650 弹出式按钮 API Key: All
++								651 弹出式按钮 Range: Yesterday
++								652 按钮 Refresh
++							653 标题 请求记录, Value: 3
++								654 文本 请求记录
++							655 text 5 total events 逐轮阅读提问与回答，按角色查看上下文。
++							656 弹出式按钮 Export
++							657 按钮 筛选请求 · 已设置 展开 +
++								658 文本 筛选请求
++								659 文本  · 已设置
++								660 文本 展开 +
++							661 container 请求查看方式
++								662 切换按钮 全部请求, Value: 0
++								663 切换按钮 会话 Session, Value: 1
++							664 text 最近优先 · 展开阅读对话 已加载  5  /  5  条请求 · 当前已加载记录含  4  个分组
++							665 开合三角标记 gpt-6-luna 2026/9/27 19:36:59 · 2 条请求 · bec7e241…
++								666 文本 gpt-6-luna
++								667 文本 2026/9/27 19:36:59
++								668 文本  ·
++								669 文本 2
++								670 文本  条请求
++								671 文本  · bec7e241…
++							672 container
++								673 text Session  bec7e241-0798-4e1f-b255-5929911801ad
++							674 container
++								675 text 2026/9/27 19:36:59 gpt-6-luna  ·  非流式
++								676 按钮 完整入参与日志
++							677 container
++								678 标题 用户提示词 本轮输入 Prompt, Value: 4
++									679 文本 用户提示词
++									680 文本 本轮输入 Prompt
++								681 文本 第二轮：把刚才的结果乘以 3。请回复“结果是 60”，并简要写出算式。
++							682 container
++								683 标题 模型返回, Value: 4
++									684 文本 模型返回
++								685 按钮 刷新对话
++								686 文本 结果是 60（20 × 3 = 60）
++							687 container
++								688 开合三角标记 系统提示词与历史上下文 按需加载 −
++									689 文本 系统提示词与历史上下文
++									690 文本 按需加载
++									691 文本 −
++								692 container 上下文显示方式
++									693 切换按钮 按角色阅读, Value: 1
++									694 切换按钮 原始入参, Value: 0
++								695 文本 完整请求历史 · 按原始顺序排列
++								696 标题 系统提示词, Value: 4
++									697 文本 系统提示词
++								698 文本 你是测试助手。简洁回答，只输出用户要求的答案。
++								699 标题 用户提示词, Value: 4
++									700 文本 用户提示词
++								701 文本 第一轮：请计算 12 + 8，只回复数字。
++								702 标题 历史模型回复, Value: 4
++									703 文本 历史模型回复
++								704 文本 20
++								705 标题 用户提示词, Value: 4
++									706 文本 用户提示词
++								707 文本 第二轮：把刚才的结果乘以 3。请回复“结果是 60”，并简要写出算式。
++							708 container
++								709 text 2026/9/27 19:36:57 gpt-6-luna  ·  非流式
++								710 按钮 完整入参与日志
++							711 container
++								712 标题 用户提示词 本轮输入 Prompt, Value: 4
++									713 文本 用户提示词
++									714 文本 本轮输入 Prompt
++								715 文本 第一轮：请计算 12 + 8，只回复数字。
++							716 container
++								717 标题 模型返回, Value: 4
++									718 文本 模型返回
++								719 按钮 刷新对话
++								720 文本 20
++							721 开合三角标记 系统提示词与历史上下文 按需加载 +
++								722 文本 系统提示词与历史上下文
++								723 文本 按需加载
++								724 文本 +
++							725 开合三角标记 gpt-6-luna 2026/9/27 17:29:46 · 1 条请求 · d37c454c…
++								726 文本 gpt-6-luna
++								727 文本 2026/9/27 17:29:46
++								728 文本  ·
++								729 文本 1
++								730 文本  条请求
++								731 文本  · d37c454c…
++							732 开合三角标记 gpt-6-luna 2026/9/27 16:14:01 · 1 条请求 · 59c6da62…
++								733 文本 gpt-6-luna
++								734 文本 2026/9/27 16:14:01
++								735 文本  ·
++								736 文本 1
++								737 文本  条请求
++								738 文本  · 59c6da62…
++							739 container
++								740 text Session  59c6da62-6694-891a-a72f-df406ac656b6
++							741 container
++								742 text 2026/9/27 16:14:01 gpt-6-luna  ·  非流式
++								743 按钮 完整入参与日志
++							744 container
++								745 标题 用户提示词 本轮输入 Prompt, Value: 4
++									746 文本 用户提示词
++									747 文本 本轮输入 Prompt
++								748 文本 Keeper Prompt Inspector 验收 20260927：请回复 KEEPER_OK。
++							749 container
++								750 标题 模型返回, Value: 4
++									751 文本 模型返回
++								752 按钮 刷新对话
++								753 文本 KEEPER_OK
++							754 开合三角标记 系统提示词与历史上下文 按需加载 +
++								755 文本 系统提示词与历史上下文
++								756 文本 按需加载
++								757 文本 +
++							758 开合三角标记 gpt-6-luna 2026/9/27 08:14:46 · 1 条请求 · 01a0e036…
++								759 文本 gpt-6-luna
++								760 文本 2026/9/27 08:14:46
++								761 文本  ·
++								762 文本 1
++								763 文本  条请求
++								764 文本  · 01a0e036…
++						765 文本 © 2026
++						766 link CPA Usage Keeper, Value: github.com/Willxup/cpa-usage-keeper
++						767 文本 ·
++						768 link License, Value: github.com/Willxup/cpa-usage-keeper/blob/main/LICENSE
++						769 文本 ·
++						770 link CLIProxyAPI Integration, Value: github.com/router-for-me/CLIProxyAPI
++						771 文本 Powered By
++						772 link Willxup GitHub profile, Value: github.com/Willxup
++						773 文本 Version: v1.15.7
+The focused UI element is 349 HTML 内容 KEEPER, URL: 127.0.0.1:8319/request-events

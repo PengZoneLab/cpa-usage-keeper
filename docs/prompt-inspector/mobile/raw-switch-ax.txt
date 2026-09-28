@@ -1,0 +1,44 @@
+The following is a diff from the previous accessibility tree for Window: "KEEPER" with ~ and + representing changed and added elements, respectively. Removed elements are summarized by ID range.
+Removed element IDs: 126-132, 151-165, 301-312, 348, 402, 406-418
++																519 文本 0 ms
++																520 文本 20,000 ms
++																521 文本 40,000 ms
++																522 文本 60,000 ms
++																523 文本 80,000 ms
++																524 文本 100,000 ms
++																525 文本 120,000 ms
++																526 文本 140,000 ms
+~														134 滑块 Right Resizer, Value: 100, Details: 136,846 ms, Secondary Actions: Increment, Decrement
++																527 row
++																	528 单元格 http://127.0.0.1:8319/api/v1/usage/events?range=yesterday&page_size=50&cursor_mode=true&model=gpt-6-luna
++																		529 图像 Fetch
++																		530 文本 events?range=yesterday&page_size=50&cursor_mode=true&model=gpt-6-luna
++																	531 单元格 200 OK
++																		532 文本 200
++																	533 单元格
++																		534 文本 fetch
++																	535 单元格
++																		536 链接 index-C16TBoKd.js:9, Help: http://127.0.0.1:8319/assets/index-C16TBoKd.js:9
++																			537 文本 index-C16TBoKd.js:9
++																	538 单元格 4.7 kB transferred over network, resource size: 4.6 kB
++																		539 文本 4.7 kB
++																	540 单元格
++																		541 文本 24 ms
++														542 container 30 requests
++															543 文本 30 requests
++														544 container 1667930 B transferred over network
++															545 文本 1.7 MB transferred
++														546 container 1700068 B resources loaded by the page
++															547 文本 1.7 MB resources
++														548 container Finish: 1.8 min
++															549 文本 Finish: 1.8 min
++														550 container DOMContentLoaded: 196 ms
++															551 文本 DOMContentLoaded: 196 ms
++														552 container Load: 196 ms
++															553 文本 Load: 196 ms
++						554 文本 Network data available
++										555 文本 −
+~										404 切换按钮 按角色阅读, Value: 0
+~										405 切换按钮 原始入参, Value: 1
++									556 文本 {"model": "gpt-6-luna", "messages": [{"role": "system", "content": "你是测试助手。简洁回答，只输出用户要求的答案。"}, {"role": "user", "content": "第一轮：请计算 12 + 8，只回复数字。"}, {"role": "assistant", "content": "20"}, {"role": "user", "content": "第二轮：把刚才的结果乘以 3。请回复“结果是 60”，并简要写出算式。"}], "stream": false, "max_tokens": 120}
+The focused UI element is 405 切换按钮 原始入参, Value: 1

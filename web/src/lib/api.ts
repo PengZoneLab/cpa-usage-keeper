@@ -563,6 +563,7 @@ export interface UsageEventConversation {
   input_available: boolean
   output_available: boolean
   full_input: string
+  role_messages?: { role: string; content: string }[]
   error?: string
 }
 export async function fetchUsageEventConversation(eventId: string, signal?: AbortSignal, context = false): Promise<UsageEventConversation> {

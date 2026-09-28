@@ -1,0 +1,10 @@
+graph LR
+ A["A 设计 ✓"] --> B["B 角色分离 ✓"]
+ A --> C["C 移动布局 ✓"]
+ B --> D["D 测试与构建 ✓"]
+ C --> D
+ D --> E["E 8319部署 ✓"]
+ E --> F["F 独立验收 ✓"]
+ F --> G["G 整体验收 ✓"]
+ classDef done fill:#d8f3dc,stroke:#2e7d32
+ class A,B,C,D,E,F,G done

@@ -63,7 +63,7 @@ const tableValues = (html: string) => {
 describe('RequestEventsDetailsCard', () => {
   it('renders the event title, total and incremental loading status', () => {
     const html = renderCard();
-    expect(html).toContain('Request Event Log');
+    expect(html).toContain('Requests &amp; Prompts');
     expect(html).toContain('120 total events');
     expect(html).toContain('Loaded 1 / 120');
     for (const obsoleteControl of ['Event Stream', 'Rows per page', '>Previous<', '>Next<']) {
@@ -149,30 +149,33 @@ describe('RequestEventsDetailsCard', () => {
     expect(html).not.toContain('aria-label="Credential"');
   });
 
-  it.each(['101', undefined])('opens request logs for request IDs with event ID %s', (id) => {
+  it.each(['101', undefined])('renders the session reader instead of legacy table log buttons for event ID %s', (id) => {
     const html = renderCard({
-      events: [{ ...events[0], id, request_id: 'req-log-101' }],
+      events: [{ ...events[0], id, request_id: 'req-log-101', session_id: 'reader-session', session_metadata_available: true }],
       requestLogAccessEnabled: true,
       onRequestLogOpen: () => undefined,
     });
-    expect(html).toContain('title="Click to view request log"');
-    expect(html).toMatch(/<button[^>]*aria-label="Success. View request log"[^>]*>.*Success.*<\/button>/);
+    expect(html).toContain('请求记录');
+    expect(html).toContain('会话 Session');
+    expect(html).toContain('claude-sonnet');
+    expect(html).toContain('<summary');
+    expect(html).not.toContain('<table');
+    expect(html).not.toContain('title="Click to view request log"');
   });
 
-  it('keeps the result label stable while a request log loads', () => {
+  it('keeps the reader present and shows an accessible loading status in the log modal', () => {
     const html = renderCard({
       events: [{ ...events[0], request_id: 'req-log-101' }],
       requestLogAccessEnabled: true,
       onRequestLogOpen: () => undefined,
       requestLogLoadingEventId: '101',
     });
-    expect(html).toContain('aria-label="Success. Loading request log"');
-    expect(html).toContain('aria-busy="true"');
-    expect(html).toMatch(/<button[^>]*>.*Success.*<\/button>/);
-    expect(html).not.toMatch(/<button[^>]*>.*Loading\.\.\..*<\/button>/);
+    expect(html).toContain('会话 Session');
+    expect(html).toContain('role="status" aria-live="polite">Loading...');
+    expect(html).toContain('role="dialog"');
   });
 
-  it('renders log content without exposing request ID, filename or cache metadata', () => {
+  it('renders full log detail with request identity but without internal filename or cache metadata', () => {
     const html = renderCard({
       requestLogResponse: {
         event_id: '101', request_id: 'req-log-101', filename: 'preview-req-log-101.log', available: true,
@@ -188,7 +191,9 @@ describe('RequestEventsDetailsCard', () => {
     expect(html).toContain('aria-expanded="true"');
     expect(html).toContain('aria-expanded="false"');
     expect(html).toContain('URL: /v1/responses');
-    for (const hidden of ['Request ID', '<span>Cached</span>', '<span>Fresh</span>', 'preview-req-log-101.log']) {
+    expect(html).toContain('Request ID');
+    expect(html).toContain('req-log-101');
+    for (const hidden of ['<span>Cached</span>', '<span>Fresh</span>', 'preview-req-log-101.log']) {
       expect(html).not.toContain(hidden);
     }
   });

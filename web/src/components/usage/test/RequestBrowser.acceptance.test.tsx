@@ -28,5 +28,6 @@ it('keeps partial groups visible during refresh without automatic historical dow
   expect(onLoadMore).not.toHaveBeenCalled()
   await render(false, false)
   expect(box.querySelectorAll('details')).toHaveLength(1)
-  expect(box.textContent).toContain('session-a')
+  expect(box.textContent).toContain('1 条请求')
+  expect(box.querySelector('summary')?.textContent).not.toContain('session-a')
 })

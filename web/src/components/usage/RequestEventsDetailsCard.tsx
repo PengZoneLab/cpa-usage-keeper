@@ -1183,6 +1183,7 @@ export function RequestEventsDetailsCard({
     [columnDefinitions]
   );
 
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const hasActiveFilters =
     modelFilter !== ALL_FILTER ||
     sourceFilter !== ALL_FILTER ||
@@ -1200,8 +1201,8 @@ export function RequestEventsDetailsCard({
       <Card
         className={styles.requestEventsCard}
         variant="flush"
-        title={t('usage_stats.request_events_title')}
-        subtitle={requestLogAccessEnabled ? '点击请求查看完整 Prompt、入参和原始日志。' : t('usage_stats.request_events_subtitle')}
+        title={requestLogAccessEnabled ? '请求记录' : t('usage_stats.request_events_title')}
+        subtitle={requestLogAccessEnabled ? '逐轮阅读提问与回答，按角色查看上下文。' : t('usage_stats.request_events_subtitle')}
         titleMeta={
           <span className={styles.requestEventsCountBadge}>
             {t('usage_stats.request_events_total_count', { count: totalCount })}
@@ -1232,7 +1233,8 @@ export function RequestEventsDetailsCard({
           </div>
         }
       >
-        <div className={styles.requestEventsToolbar}>
+        {requestLogAccessEnabled && <button className={styles.readerFilterToggle} aria-expanded={mobileFiltersOpen} onClick={() => setMobileFiltersOpen(value => !value)}>筛选请求{hasActiveFilters ? ' · 已设置' : ''}<span>{mobileFiltersOpen ? '收起 −' : '展开 +'}</span></button>}
+        <div className={`${styles.requestEventsToolbar} ${requestLogAccessEnabled ? styles.readerFilters : ''} ${mobileFiltersOpen ? styles.readerFiltersOpen : ''}`}>
           <div className={styles.requestEventsFiltersGroup}>
             {/* 控件已有 aria-label，外层避免使用 label 将标题和空隙的点击转交给控件。 */}
             <div className={styles.requestEventsFilterItem}>

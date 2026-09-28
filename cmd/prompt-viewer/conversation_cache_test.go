@@ -46,8 +46,9 @@ func TestPersistentConversationCacheAuthorizationAndContext(t *testing.T) {
 		handlerWithStores(target, fstest.MapFS{}, nil, cache).ServeHTTP(w, httptest.NewRequest("GET", path, nil))
 		return w
 	}
+	cache.put(context.Background(), target.String()+"/1", conversationPayload{Available: true, Input: "stale system fallback", Output: "old", OutputAvailable: true, CacheComplete: true})
 	w := request(false)
-	if w.Code != 200 || w.Body.Len() > 1000 {
+	if w.Code != 200 || w.Body.Len() > 1000 || strings.Contains(w.Body.String(), "role_messages") {
 		t.Fatalf("summary not lightweight: %d %d", w.Code, w.Body.Len())
 	}
 	cache.db.Close()
@@ -63,8 +64,12 @@ func TestPersistentConversationCacheAuthorizationAndContext(t *testing.T) {
 	w = request(true)
 	var p conversationPayload
 	json.Unmarshal(w.Body.Bytes(), &p)
-	if len(p.FullInput) < 2<<20 || p.Input != "hello" || p.Output != "world" {
+	if len(p.FullInput) < 2<<20 || p.Input != "hello" || p.Output != "world" || len(p.RoleMessages) != 2 || p.RoleMessages[0].Role != "system" || p.RoleMessages[1].Content != "hello" {
 		t.Fatal("context lost")
+	}
+	w = request(false)
+	if strings.Contains(w.Body.String(), "role_messages") || w.Body.Len() > 1000 {
+		t.Fatal("context contaminated lightweight cache")
 	}
 	allow = false
 	w = request(false)

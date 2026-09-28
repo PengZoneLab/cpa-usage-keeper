@@ -16,15 +16,21 @@ const conversationMaxBytes = 128 << 20
 
 var conversationSlots = make(chan struct{}, 3)
 
+type roleMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
 type conversationPayload struct {
-	CacheComplete   bool   `json:"-"`
-	Available       bool   `json:"available"`
-	Input           string `json:"input"`
-	Output          string `json:"output"`
-	FullInput       string `json:"full_input"`
-	InputAvailable  bool   `json:"input_available"`
-	OutputAvailable bool   `json:"output_available"`
-	Error           string `json:"error,omitempty"`
+	RoleMessages    []roleMessage `json:"role_messages,omitempty"`
+	CacheComplete   bool          `json:"-"`
+	Available       bool          `json:"available"`
+	Input           string        `json:"input"`
+	Output          string        `json:"output"`
+	FullInput       string        `json:"full_input"`
+	InputAvailable  bool          `json:"input_available"`
+	OutputAvailable bool          `json:"output_available"`
+	Error           string        `json:"error,omitempty"`
 }
 type logSection struct {
 	Title   string `json:"title"`
@@ -109,11 +115,14 @@ func serveConversationCached(w http.ResponseWriter, r *http.Request, target *url
 	emit := func(p conversationPayload) {
 		if r.URL.Query().Get("context") != "1" {
 			p.FullInput = ""
+			p.RoleMessages = nil
+		} else {
+			p.RoleMessages = parseRoleMessages(p.FullInput)
 		}
 		json.NewEncoder(w).Encode(p)
 	}
-	save := func(p conversationPayload) { cache.put(r.Context(), target.String()+"/"+id, p); emit(p) }
-	if p, ok := cache.get(r.Context(), target.String()+"/"+id, r.URL.Query().Get("context") == "1"); ok {
+	save := func(p conversationPayload) { cache.put(r.Context(), "roles-v2/"+target.String()+"/"+id, p); emit(p) }
+	if p, ok := cache.get(r.Context(), "roles-v2/"+target.String()+"/"+id, r.URL.Query().Get("context") == "1"); ok {
 		// This admin-protected upstream endpoint checks the same log-access permission
 		// without retrieving the potentially huge log. Never trust local cache as auth.
 		auth, e := fetch("POST", base+"/download-token")
@@ -273,7 +282,7 @@ func latestUser(v any) string {
 	case []any:
 		for i := len(x) - 1; i >= 0; i-- {
 			m, ok := x[i].(map[string]any)
-			if ok && m["role"] == "user" {
+			if ok && (m["role"] == "user" || (m["role"] == nil && (m["type"] == "message" || m["type"] == "input_text"))) {
 				return textContent(m)
 			}
 		}
@@ -283,7 +292,7 @@ func latestUser(v any) string {
 				return s
 			}
 		}
-		for _, k := range []string{"prompt", "instructions", "system"} {
+		for _, k := range []string{"prompt"} {
 			if s := textContent(x[k]); s != "" {
 				return s
 			}
@@ -455,9 +464,7 @@ func parseConversation(sections []logSection) conversationPayload {
 			if json.Unmarshal([]byte(s.Content), &v) == nil {
 				result.Input = latestUser(v)
 			}
-			if result.Input == "" {
-				result.Input = result.FullInput
-			}
+
 			break
 		}
 	}
