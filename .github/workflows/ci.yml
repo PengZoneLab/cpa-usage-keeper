@@ -110,8 +110,8 @@ jobs:
       matrix:
         runs-on:
           - ubuntu-26.04
-          - macos-latest
-          - windows-latest
+          - macos-15
+          - windows-2025
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
