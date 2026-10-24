@@ -98,6 +98,65 @@ describe('Analysis model speed card', () => {
     expect(rows.find((row) => row.title === 'no-speed-model')!.textContent).not.toContain('0.0 t/s');
   });
 
+  it('highlights a legend model across buckets, restores on leave and keeps missing samples absent', async () => {
+    vi.spyOn(window, 'matchMedia').mockImplementation((query) => ({ matches: query === '(hover: hover) and (pointer: fine)', addEventListener: vi.fn(), removeEventListener: vi.fn() }) as unknown as MediaQueryList);
+    const response = structuredClone(speed);
+    response.series[0].samples[1] = { speed_tps_sum: 60, speed_sample_count: 1, mean_tps: 60 };
+    await render(response);
+    const chart = { stop: vi.fn(), reset: vi.fn() } as unknown as Chart<'scatter'>;
+    const update = () => captured.plugins[0].beforeDatasetsUpdate!(chart, { mode: 'default', cancelable: true }, {});
+    update();
+    const baseline = captured.data.datasets.map((dataset) => ({ ...dataset }));
+    const button = container.querySelector<HTMLButtonElement>('li[title="slow-model-full-name"] button')!;
+    await event(0.3);
+    await act(async () => button.dispatchEvent(new PointerEvent('pointerover', { bubbles: true, pointerType: 'mouse' })));
+    expect(button.dataset.highlighted).toBe('true');
+    expect(captured.data.datasets[1].pointRadius).toBe(6);
+    expect(captured.data.datasets[1].borderWidth).toBe(2.5);
+    expect(captured.data.datasets[1].data.map((point) => point.y)).toEqual([40, 60]);
+    expect(captured.data.datasets[2].backgroundColor).not.toEqual(baseline[2].backgroundColor);
+    expect(captured.data.datasets[0].data.map((point) => point.y)).toEqual([null, null]);
+    expect(document.querySelector('[data-model-speed-tooltip]')).toBeNull();
+    update();
+    expect(chart.reset).toHaveBeenCalledTimes(1);
+    await act(async () => button.dispatchEvent(new PointerEvent('pointerout', { bubbles: true, pointerType: 'mouse' })));
+    expect(captured.data.datasets.map((dataset) => dataset.pointRadius)).toEqual([4, 4, 4]);
+    expect(captured.data.datasets.map((dataset) => dataset.backgroundColor)).toEqual(baseline.map((dataset) => dataset.backgroundColor));
+  });
+
+  it('supports keyboard focus and toggle selection and clears selection when the query changes', async () => {
+    await render();
+    const button = container.querySelector<HTMLButtonElement>('li[title="slow-model-full-name"] button')!;
+    await act(async () => button.focus());
+    expect(captured.data.datasets[1].pointRadius).toBe(6);
+    await act(async () => button.blur());
+    expect(captured.data.datasets[1].pointRadius).toBe(4);
+    await act(async () => button.click());
+    expect(button.getAttribute('aria-pressed')).toBe('true');
+    expect(captured.data.datasets[1].pointRadius).toBe(6);
+    await act(async () => button.click());
+    expect(button.getAttribute('aria-pressed')).toBe('false');
+    expect(captured.data.datasets[1].pointRadius).toBe(4);
+    await act(async () => button.click());
+    await render(speed, 'hourly', { queryKey: 'different-range' });
+    expect(button.getAttribute('aria-pressed')).toBe('false');
+    expect(captured.data.datasets[1].pointRadius).toBe(4);
+  });
+
+  it('keeps a pinned model on refresh but clears it when the visible model selection changes', async () => {
+    await render();
+    const button = container.querySelector<HTMLButtonElement>('li[title="slow-model-full-name"] button')!;
+    await act(async () => button.click());
+    await render(structuredClone(speed));
+    expect(captured.data.datasets[1].pointRadius).toBe(6);
+    await act(async () => container.querySelector<HTMLButtonElement>('button')!.click());
+    const option = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-model-speed-picker] [role="option"]')).find((item) => item.textContent === 'slow-model-full-name')!;
+    await act(async () => option.click());
+    await act(async () => document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })));
+    expect(captured.data.datasets.map((dataset) => dataset.label)).toEqual(['no-speed-model', 'fast-model-full-name']);
+    expect(captured.data.datasets.every((dataset) => dataset.pointRadius === 4)).toBe(true);
+  });
+
   it('keeps the old canvas while refreshing and resets only for matched success or a new query', async () => {
     await render();
     const canvas = container.querySelector('canvas');
