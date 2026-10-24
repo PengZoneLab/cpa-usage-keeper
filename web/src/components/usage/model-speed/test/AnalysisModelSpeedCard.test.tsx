@@ -27,9 +27,10 @@ describe('Analysis model speed card', () => {
   beforeEach(() => { localStorage.clear(); container = document.createElement('div'); document.body.append(container); root = createRoot(container); });
   afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.restoreAllMocks(); });
   const render = async (response = speed, granularity: 'hourly' | 'daily' = 'hourly', options: { loading?: boolean; queryKey?: string; refreshSignal?: { source: object; revision: number } } = {}) => { await act(async () => root.render(<AnalysisModelSpeedCard speed={response} granularity={granularity} loading={options.loading ?? false} queryKey={options.queryKey} refreshSignal={options.refreshSignal} isDark={false} isMobile={false} timezone="Asia/Shanghai" />)); };
-  const event = async (x: number, y = 100, type: 'mousemove' | 'click' | 'mouseout' = 'mousemove', plugin = captured.plugins[0]) => {
-    const chart = { canvas: container.querySelector('canvas'), chartArea: { left: 0, right: 300, top: 0, bottom: 300 }, scales: { x: { getValueForPixel: (value: number) => value }, y: { getPixelForValue: () => 300 } }, getDatasetMeta: () => ({ data: [] }), getActiveElements: () => [], setActiveElements: vi.fn(), draw: vi.fn() } as unknown as Chart<'scatter'>;
-    await act(async () => plugin.afterEvent!(chart, { event: { type, x, y, native: null }, replay: false, inChartArea: true }, {}));
+  const event = async (x: number, y = 100, type: 'mousemove' | 'click' | 'mouseout' = 'mousemove', plugin = captured.plugins[0], replay = false) => {
+    const chart = { canvas: container.querySelector('canvas'), chartArea: { left: 0, right: 300, top: 0, bottom: 300 }, scales: { x: { getValueForPixel: (value: number) => value }, y: { getPixelForValue: () => 300 } }, getDatasetMeta: () => ({ data: [] }), getActiveElements: () => [], setActiveElements: vi.fn(), draw: vi.fn(), render: vi.fn() } as unknown as Chart<'scatter'>;
+    await act(async () => plugin.afterEvent!(chart, { event: { type, x, y, native: null }, replay, inChartArea: true }, {}));
+    return chart;
   };
 
   it('plots arithmetic means, null gaps, a shared zero-based axis and stable model colors', async () => {
@@ -143,6 +144,54 @@ describe('Analysis model speed card', () => {
     expect(captured.data.datasets[1].pointRadius).toBe(4);
   });
 
+  it('does not revive a pinned model when returning to the previous query', async () => {
+    await render(speed, 'hourly', { queryKey: 'range-a' });
+    const button = container.querySelector<HTMLButtonElement>('li[title="fast-model-full-name"] button')!;
+    await act(async () => button.click());
+    await render(speed, 'hourly', { queryKey: 'range-b' });
+    await render(speed, 'hourly', { queryKey: 'range-a' });
+    expect(button.getAttribute('aria-pressed')).toBe('false');
+    expect(captured.data.datasets.every((dataset) => dataset.pointRadius === 4)).toBe(true);
+  });
+
+  it('does not revive a pinned model when it is removed and added back', async () => {
+    await render();
+    await act(async () => container.querySelector<HTMLButtonElement>('li[title="fast-model-full-name"] button')!.click());
+    await act(async () => container.querySelector<HTMLButtonElement>('button')!.click());
+    const option = () => Array.from(document.querySelectorAll<HTMLButtonElement>('[data-model-speed-picker] [role="option"]')).find((item) => item.textContent === 'fast-model-full-name')!;
+    await act(async () => option().click());
+    await act(async () => option().click());
+    await act(async () => document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })));
+    expect(container.querySelector('li[title="fast-model-full-name"] button')!.getAttribute('aria-pressed')).toBe('false');
+    expect(captured.data.datasets.every((dataset) => dataset.pointRadius === 4)).toBe(true);
+  });
+
+  it('keeps the tooltip dismissed on event replay after legend focus, until a real canvas event', async () => {
+    await render();
+    await event(0.3);
+    expect(document.querySelector('[data-model-speed-tooltip]')).not.toBeNull();
+    await act(async () => container.querySelector<HTMLButtonElement>('li[title="slow-model-full-name"] button')!.focus());
+    expect(document.querySelector('[data-model-speed-tooltip]')).toBeNull();
+    await event(0.3, 100, 'mousemove', captured.plugins[0], true);
+    expect(document.querySelector('[data-model-speed-tooltip]')).toBeNull();
+    await event(0.3);
+    expect(document.querySelector('[data-model-speed-tooltip]')).not.toBeNull();
+    await event(1.2, 100, 'mousemove', captured.plugins[0], true);
+    expect(document.querySelector('[data-model-speed-tooltip] > strong')!.textContent).toBe('03:00 – 06:00');
+  });
+
+  it('starts pending style restoration when focusing the already pinned model', async () => {
+    await render();
+    const button = container.querySelector<HTMLButtonElement>('li[title="slow-model-full-name"] button')!;
+    await act(async () => button.click());
+    const chart = await event(0.3);
+    const data = captured.data;
+    await act(async () => button.focus());
+    expect(captured.data).toBe(data);
+    expect(chart.setActiveElements).toHaveBeenCalledWith([]);
+    expect(chart.render).toHaveBeenCalledTimes(1);
+  });
+
   it('keeps a pinned model on refresh but clears it when the visible model selection changes', async () => {
     await render();
     const button = container.querySelector<HTMLButtonElement>('li[title="slow-model-full-name"] button')!;
@@ -204,7 +253,7 @@ describe('Analysis model speed card', () => {
     const widths: number[] = [];
     const context = { lineWidth: 0, strokeStyle: '', save: vi.fn(), restore: vi.fn(), beginPath: vi.fn(), moveTo: vi.fn(), lineTo: vi.fn(), stroke: () => widths.push(context.lineWidth) };
     const metadata = [{ data: [{ x: 80, y: 300, skip: true }] }, { data: [{ x: 100, y: 180 }] }, { data: [{ x: 120, y: 60 }] }];
-    const chart = { canvas: container.querySelector('canvas'), ctx: context, data: captured.data, chartArea: { left: 0, right: 300, top: 0, bottom: 300 }, scales: { x: { getValueForPixel: () => 0 }, y: { getPixelForValue: () => 300 } }, getDatasetMeta: (index: number) => metadata[index], getActiveElements: () => active, setActiveElements: (items: typeof active) => { active = items; }, draw: vi.fn(), stop: vi.fn(), reset: vi.fn() } as unknown as Chart<'scatter'>;
+    const chart = { canvas: container.querySelector('canvas'), ctx: context, data: captured.data, chartArea: { left: 0, right: 300, top: 0, bottom: 300 }, scales: { x: { getValueForPixel: () => 0 }, y: { getPixelForValue: () => 300 } }, getDatasetMeta: (index: number) => metadata[index], getActiveElements: () => active, setActiveElements: (items: typeof active) => { active = items; }, draw: vi.fn(), render: vi.fn(), stop: vi.fn(), reset: vi.fn() } as unknown as Chart<'scatter'>;
     const move = async (x: number, y: number) => { await act(async () => captured.plugins[0].afterEvent!(chart, { event: { type: 'mousemove', x, y, native: null }, replay: false, inChartArea: true }, {})); };
     await move(122, 250);
     expect(active).toEqual([{ datasetIndex: 2, index: 0 }]);

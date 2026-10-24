@@ -47,10 +47,11 @@ export function AnalysisModelSpeedCard({ speed: response, granularity = 'hourly'
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const chartRef = useRef<Chart<'scatter'> | null>(null);
   const highlighted = useRef<Highlight | null>(null);
+  const suppressCanvasReplay = useRef(false);
   const touchInput = useRef(false);
   const [hover, setHover] = useState<Hover | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const legendHighlight = useAnalysisHighlight(JSON.stringify([queryKey, selected]));
+  const legendHighlight = useAnalysisHighlight(JSON.stringify([queryKey, selected]), { resetOnScopeChange: true });
   const activeModel = !initialLoading && !pickerOpen && selected.includes(legendHighlight.active ?? '') ? legendHighlight.active : null;
   const locale = i18n?.language ?? 'en';
   const models = useMemo(() => new Map(speed.series.map((series) => [series.model, series])), [speed]);
@@ -75,9 +76,13 @@ export function AnalysisModelSpeedCard({ speed: response, granularity = 'hourly'
   const dismiss = useCallback(() => {
     highlighted.current = null;
     const chart = chartRef.current;
-    if (chart?.canvas) { chart.setActiveElements([]); chart.draw(); }
+    if (chart?.canvas) { chart.setActiveElements([]); chart.render(); }
     setHover(null);
   }, []);
+  const interactWithLegend = useCallback(() => {
+    suppressCanvasReplay.current = true;
+    dismiss();
+  }, [dismiss]);
   const closeOnLeave = useCallback(() => { if (!touchInput.current) dismiss(); }, [dismiss]);
   const changePickerOpen = useCallback((open: boolean) => { setPickerOpen(open); if (open) dismiss(); }, [dismiss]);
 
@@ -113,6 +118,12 @@ export function AnalysisModelSpeedCard({ speed: response, granularity = 'hourly'
     afterEvent(chart, args) {
       const { event } = args;
       chartRef.current = chart;
+      // Updating legend styles can replay a stale canvas event even when no point was active.
+      if (args.replay && suppressCanvasReplay.current) {
+        chart.setActiveElements([]);
+        args.changed = true;
+        return;
+      }
       const syncActive = () => {
         const hit = highlighted.current;
         chart.setActiveElements(hit ? [{ datasetIndex: hit.datasetIndex, index: hit.index }] : []);
@@ -122,6 +133,7 @@ export function AnalysisModelSpeedCard({ speed: response, granularity = 'hourly'
       if (event.type === 'mouseout') { closeOnLeave(); syncActive(); return; }
       if (event.type !== 'mousemove' && event.type !== 'click') return;
       if (touchInput.current && event.type !== 'click') { syncActive(); return; }
+      if (!args.replay) suppressCanvasReplay.current = false;
       const { x, y } = event;
       const area = chart.chartArea;
       if (x === null || y === null || x < area.left || x > area.right || y < area.top || y > area.bottom) { closeOnLeave(); syncActive(); return; }
@@ -212,7 +224,7 @@ export function AnalysisModelSpeedCard({ speed: response, granularity = 'hourly'
           onPointerMove={(event) => { if (event.pointerType === 'mouse') touchInput.current = false; }}>
           <Scatter data={chartData} options={chartOptions} plugins={[plugin]} />
         </div>}
-      <ModelSpeedLegend items={legendItems} highlight={{ ...legendHighlight, active: activeModel }} onInteract={dismiss} />
+      <ModelSpeedLegend items={legendItems} highlight={{ ...legendHighlight, active: activeModel }} onInteract={interactWithLegend} />
     </div>
     {visibleHover && hoveredBucket && <ModelSpeedTooltip canvasRef={canvasRef} x={visibleHover.x} y={visibleHover.y} touch={visibleHover.touch} theme={theme}
       title={formatModelSpeedTimeRange(hoveredBucket.start, hoveredBucket.end, timezone, locale, granularity === 'daily' ? 'date' : 'minutes', speed.buckets.flatMap((bucket) => [bucket.start, bucket.end]))}
