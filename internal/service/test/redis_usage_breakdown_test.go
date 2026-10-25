@@ -69,22 +69,30 @@ func TestUnknownExecutorBreakdownNormalizesBeforePricingAndAggregation(t *testin
 }
 
 func TestUnavailableBreakdownKeepsIdentityAndStrictFallback(t *testing.T) {
-	for name, breakdown := range map[string]string{
-		"missing":      "null",
-		"wrong type":   `"invalid"`,
-		"incomplete":   `{"schema_version":2,"quality":"complete","total_tokens":470}`,
-		"unclassified": strings.Replace(completeClaudeBreakdown, `"complete"`, `"unclassified"`, 1),
-		"inconsistent": strings.Replace(completeClaudeBreakdown, `"complete"`, `"inconsistent"`, 1),
+	for _, test := range []struct{ name, version, breakdown string }{
+		{"missing", "2", "null"},
+		{"wrong type", "2", `"invalid"`},
+		{"incomplete", "2", `{"schema_version":2,"quality":"complete","total_tokens":470}`},
+		{"unclassified", "2", strings.Replace(completeClaudeBreakdown, `"complete"`, `"unclassified"`, 1)},
+		{"inconsistent", "2", strings.Replace(completeClaudeBreakdown, `"complete"`, `"inconsistent"`, 1)},
+		{"version null", "null", completeClaudeBreakdown},
+		{"version string", `"invalid"`, completeClaudeBreakdown},
+		{"version array", "[]", completeClaudeBreakdown},
+		{"version unsupported", "3", completeClaudeBreakdown},
 	} {
 		for _, identity := range []string{"", "claude"} {
-			t.Run(name+"/"+identity, func(t *testing.T) {
+			// 版本异常保留原有 strict 场景；breakdown 异常同时验证 identity 回退。
+			if test.version != "2" && identity != "" {
+				continue
+			}
+			t.Run(test.name+"/"+identity, func(t *testing.T) {
 				db := openUsageServiceTestDatabase(t)
 				if identity != "" {
 					if err := db.Create(&entities.UsageIdentity{AuthType: entities.UsageIdentityAuthTypeAIProvider, Identity: "plugin-auth", Type: identity}).Error; err != nil {
 						t.Fatal(err)
 					}
 				}
-				seedRedisInboxMessagesForTest(t, db, breakdownInboxMessage("executorAdapter", "2", breakdown))
+				seedRedisInboxMessagesForTest(t, db, breakdownInboxMessage("executorAdapter", test.version, test.breakdown))
 				result, err := service.NewSyncServiceWithOptions(db, service.SyncServiceOptions{PricingCatalog: emptyPricingCatalogForTest()}).ProcessRedisUsageInbox(context.Background())
 				if err != nil || result == nil || result.InsertedEvents != 1 {
 					t.Fatalf("unavailable optional accounting must not reject the event: result=%+v err=%v", result, err)
@@ -99,22 +107,5 @@ func TestUnavailableBreakdownKeepsIdentityAndStrictFallback(t *testing.T) {
 				}
 			})
 		}
-	}
-}
-
-func TestInvalidAccountingVersionDoesNotRejectUsageEvent(t *testing.T) {
-	for _, version := range []string{`null`, `"invalid"`, `[]`, `3`} {
-		t.Run(version, func(t *testing.T) {
-			db := openUsageServiceTestDatabase(t)
-			seedRedisInboxMessagesForTest(t, db, breakdownInboxMessage("executorAdapter", version, completeClaudeBreakdown))
-			result, err := service.NewSyncServiceWithOptions(db, service.SyncServiceOptions{PricingCatalog: emptyPricingCatalogForTest()}).ProcessRedisUsageInbox(context.Background())
-			if err != nil || result == nil || result.InsertedEvents != 1 {
-				t.Fatalf("invalid optional version must retain legacy ingress: result=%+v err=%v", result, err)
-			}
-			event := loadTokenProcessorSyncEvent(t, db, "breakdown-event")
-			if event.InputTokens != 100 || event.TotalTokens != 470 {
-				t.Fatalf("expected strict fallback, got %+v", event)
-			}
-		})
 	}
 }

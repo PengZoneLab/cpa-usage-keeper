@@ -65,12 +65,12 @@ func TestBreakdownNeverChangesRegisteredExecutors(t *testing.T) {
 		"KimiExecutor", "OpenAICompatExecutor", "MetaExecutor", "DevinExecutor",
 	} {
 		t.Run(executor, func(t *testing.T) {
+			baseline := mustResolveExecutor(t, executor)
 			for _, values := range []tokenprocessor.TokenValues{
 				claudeReportedTokens(),
 				{InputTokens: 100, OutputTokens: 30, ReasoningTokens: 10, TotalTokens: 140},
 				{TotalTokens: 2120},
 			} {
-				baseline := mustResolveExecutor(t, executor)
 				for _, raw := range []string{claudeAccounting, `"invalid"`, `null`} {
 					resolved, err := tokenprocessor.ResolveExecutorWithBreakdown(executor, values, json.RawMessage(`2`), json.RawMessage(raw))
 					if err != nil || !reflect.DeepEqual(resolved, baseline) {
@@ -89,25 +89,32 @@ func TestBreakdownNeverChangesRegisteredExecutors(t *testing.T) {
 func TestBreakdownRejectsUnavailableOrContradictoryAccounting(t *testing.T) {
 	for name, raw := range map[string]string{
 		"absent": "", "null": `null`, "wrong type": `[]`, "malformed": `{`,
-		"missing input":     strings.Replace(claudeAccounting, `"input":`, `"ignored_input":`, 1),
-		"missing output":    strings.Replace(claudeAccounting, `"output":`, `"ignored_output":`, 1),
-		"missing zero":      strings.Replace(claudeAccounting, `,"unclassified_tokens":0`, "", 1),
-		"null bucket":       strings.Replace(claudeAccounting, `"uncached_tokens":100`, `"uncached_tokens":null`, 1),
-		"fractional count":  strings.Replace(claudeAccounting, `"uncached_tokens":100`, `"uncached_tokens":100.5`, 1),
-		"string count":      strings.Replace(claudeAccounting, `"uncached_tokens":100`, `"uncached_tokens":"100"`, 1),
-		"negative count":    strings.Replace(claudeAccounting, `"uncached_tokens":100`, `"uncached_tokens":-100`, 1),
-		"overflow":          strings.Replace(claudeAccounting, `"uncached_tokens":100`, `"uncached_tokens":9223372036854775807`, 1),
-		"out of int64":      strings.Replace(claudeAccounting, `"uncached_tokens":100`, `"uncached_tokens":9223372036854775808`, 1),
-		"schema mismatch":   strings.Replace(claudeAccounting, `"schema_version":2`, `"schema_version":3`, 1),
-		"unclassified":      strings.Replace(claudeAccounting, `"complete"`, `"unclassified"`, 1),
-		"inconsistent":      strings.Replace(claudeAccounting, `"complete"`, `"inconsistent"`, 1),
-		"unknown quality":   strings.Replace(claudeAccounting, `"complete"`, `"future"`, 1),
-		"nonzero remainder": strings.Replace(claudeAccounting, `"unclassified_tokens":0`, `"unclassified_tokens":1`, 1),
-		"wrong input sum":   strings.Replace(claudeAccounting, `"uncached_tokens":100`, `"uncached_tokens":99`, 1),
-		"wrong output sum":  strings.Replace(claudeAccounting, `"non_reasoning_tokens":15`, `"non_reasoning_tokens":14`, 1),
-		"wrong total sum":   strings.Replace(claudeAccounting, `"total_tokens":470`, `"total_tokens":469`, 1),
 	} {
 		t.Run(name, func(t *testing.T) {
+			assertBreakdownUnresolved(t, claudeReportedTokens(), "2", raw)
+		})
+	}
+	for name, replacement := range map[string][2]string{
+		"missing input":     {`"input":`, `"ignored_input":`},
+		"missing output":    {`"output":`, `"ignored_output":`},
+		"missing zero":      {`,"unclassified_tokens":0`, ""},
+		"null bucket":       {`"uncached_tokens":100`, `"uncached_tokens":null`},
+		"fractional count":  {`"uncached_tokens":100`, `"uncached_tokens":100.5`},
+		"string count":      {`"uncached_tokens":100`, `"uncached_tokens":"100"`},
+		"negative count":    {`"uncached_tokens":100`, `"uncached_tokens":-100`},
+		"overflow":          {`"uncached_tokens":100`, `"uncached_tokens":9223372036854775807`},
+		"out of int64":      {`"uncached_tokens":100`, `"uncached_tokens":9223372036854775808`},
+		"schema mismatch":   {`"schema_version":2`, `"schema_version":3`},
+		"unclassified":      {`"complete"`, `"unclassified"`},
+		"inconsistent":      {`"complete"`, `"inconsistent"`},
+		"unknown quality":   {`"complete"`, `"future"`},
+		"nonzero remainder": {`"unclassified_tokens":0`, `"unclassified_tokens":1`},
+		"wrong input sum":   {`"uncached_tokens":100`, `"uncached_tokens":99`},
+		"wrong output sum":  {`"non_reasoning_tokens":15`, `"non_reasoning_tokens":14`},
+		"wrong total sum":   {`"total_tokens":470`, `"total_tokens":469`},
+	} {
+		t.Run(name, func(t *testing.T) {
+			raw := strings.Replace(claudeAccounting, replacement[0], replacement[1], 1)
 			assertBreakdownUnresolved(t, claudeReportedTokens(), "2", raw)
 		})
 	}
