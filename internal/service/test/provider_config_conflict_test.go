@@ -57,9 +57,9 @@ func TestProviderConfigConflictPreservesLocalStateWithoutRetry(t *testing.T) {
 			locks := &service.CredentialMutationLocks{}
 			var err error
 			if operation == "status" {
-				_, err = service.NewCredentialStatusService(db, client, refresh, locks).SetAIProviderDisabled(context.Background(), "target", true)
+				_, err = service.NewCredentialStatusService(db, client, refresh, locks, nil).SetAIProviderDisabled(context.Background(), "target", true)
 			} else {
-				_, err = service.NewCredentialPriorityService(db, client, refresh, locks).SetAIProviderPriority(context.Background(), "target", 10)
+				_, err = service.NewCredentialPriorityService(db, client, refresh, locks, nil).SetAIProviderPriority(context.Background(), "target", 10)
 			}
 			if !errors.Is(err, service.ErrCredentialConfigChanged) {
 				t.Fatalf("error = %v, want configuration changed", err)

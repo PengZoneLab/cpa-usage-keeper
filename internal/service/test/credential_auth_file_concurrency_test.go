@@ -73,8 +73,8 @@ func TestAuthFileStatusAndPriorityShareMutationLock(t *testing.T) {
 			seedAuthFileCredential(t, db, "auth.json", "auth-index")
 			client := &authFileReplacementClient{file: authfiles.AuthFile{Name: "auth.json", AuthIndex: "auth-index"}, firstKind: firstKind, firstStarted: make(chan struct{}), releaseFirst: make(chan struct{}), secondStarted: make(chan struct{})}
 			locks := &service.CredentialMutationLocks{}
-			status := service.NewCredentialStatusService(db, client, nil, locks)
-			priority := service.NewCredentialPriorityService(db, client, nil, locks)
+			status := service.NewCredentialStatusService(db, client, nil, locks, nil)
+			priority := service.NewCredentialPriorityService(db, client, nil, locks, nil)
 			bulk := service.NewAuthFilesManagementService(client, locks)
 			actions := map[string]func() error{
 				"status": func() error {

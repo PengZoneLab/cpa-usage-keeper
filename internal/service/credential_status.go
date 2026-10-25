@@ -58,11 +58,12 @@ type credentialStatusService struct {
 	client  CredentialStatusClient
 	refresh MetadataRefresher
 	// locks 按认证文件名或供应商配置路径串行化读改写，避免跨操作互相覆盖。
-	locks *CredentialMutationLocks
+	locks    *CredentialMutationLocks
+	metadata *CredentialMetadataCoordinator
 }
 
-func NewCredentialStatusService(db *gorm.DB, client CredentialStatusClient, refresh MetadataRefresher, locks *CredentialMutationLocks) CredentialStatusProvider {
-	return &credentialStatusService{db: db, client: client, refresh: refresh, locks: locks}
+func NewCredentialStatusService(db *gorm.DB, client CredentialStatusClient, refresh MetadataRefresher, locks *CredentialMutationLocks, metadata *CredentialMetadataCoordinator) CredentialStatusProvider {
+	return &credentialStatusService{db: db, client: client, refresh: refresh, locks: locks, metadata: metadata}
 }
 
 // SetAuthFileDisabled 用列表里的 auth_index 反查文件名，再按 CPA 的 name + auth_index 定位唯一账号。
@@ -197,15 +198,17 @@ func (s *credentialStatusService) validate(authIndex string) (string, error) {
 
 // persistDisabled 立即写回本地状态，让页面刷新前就看到一致结果；后续 metadata 同步会再对齐一次。
 func (s *credentialStatusService) persistDisabled(ctx context.Context, authType entities.UsageIdentityAuthType, authIndex string, disabled bool) error {
-	if err := repository.UpdateUsageIdentityDisabled(ctx, s.db, authType, authIndex, disabled); err != nil {
-		// CPA 已经成功时，本地写回失败也要排队一次 metadata 同步，让后台在数据库恢复后重新对齐状态。
+	// CPA 已成功时，本地失败也要失效旧快照并排队刷新；通知放在协调器短锁之外。
+	defer func() {
 		if s.refresh != nil {
 			s.refresh.RequestLocalMetadataRefresh()
 		}
+	}()
+	err := s.metadata.completeMutation(func() error {
+		return repository.UpdateUsageIdentityDisabled(ctx, s.db, authType, authIndex, disabled)
+	})
+	if err != nil {
 		return fmt.Errorf("update usage identity disabled state: %w", err)
-	}
-	if s.refresh != nil {
-		s.refresh.RequestLocalMetadataRefresh()
 	}
 	return nil
 }
