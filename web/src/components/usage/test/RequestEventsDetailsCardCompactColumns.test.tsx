@@ -90,7 +90,7 @@ describe('RequestEventsDetailsCard compact columns', () => {
     expect(cells[3]).toBe('gpt-5.6keeper-gpt')
     expect(cells[4]).toBe('high')
     expect(cells[5]).toBe('Fast / Flex')
-    expect(cells[7]).toBe('SSE/messages')
+    expect(cells[7]).toBe('SSE/v1/messages')
     expect(cells[8]).toBe('120msTTFT 45ms')
     expect(cells[9]).toBe('30.0 t/s')
     expect(cells[10]).toBe('2001006020')

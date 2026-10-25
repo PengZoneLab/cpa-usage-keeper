@@ -176,6 +176,16 @@ describe('CredentialRequestEventsList', () => {
     vi.useRealTimers()
   })
 
+  it('normalizes a Codex endpoint alias in credential events', async () => {
+    await act(async () => root.render(
+      <CredentialRequestEventsList
+        {...credentialEventListDefaults}
+        events={[{ ...event, endpoint: 'POST /backend-api/codex/responses' }]}
+      />,
+    ))
+    expect(container.textContent).toContain('usage_stats.request_endpoint: /v1/responses')
+  })
+
   it('renders the compact credential event columns with stacked request metadata', async () => {
     await act(async () => root.render(
       <CredentialRequestEventsList
@@ -209,7 +219,7 @@ describe('CredentialRequestEventsList', () => {
       .toBe('gpt-5.6keeper-gpt')
     expect(container.querySelector('[data-credential-request-model="1"]')?.textContent)
       .not.toContain('usage_stats.reasoning_effort')
-    expect(container.textContent).toContain('usage_stats.request_endpoint: /responses')
+    expect(container.textContent).toContain('usage_stats.request_endpoint: /v1/responses')
     expect(container.textContent).toContain('usage_stats.reasoning_effort: high')
     expect(container.textContent).not.toContain('usage_stats.model_alias')
     expect(container.querySelector('[data-credential-request-model="1"]')?.getAttribute('title')).toBeNull()
