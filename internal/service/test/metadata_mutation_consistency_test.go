@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"cpa-usage-keeper/internal/cpa"
-	"cpa-usage-keeper/internal/cpa/dto/authfiles"
+	"cpa-usage-keeper/internal/cpa/dto/credentials"
 	"cpa-usage-keeper/internal/cpa/dto/providerconfig"
 	"cpa-usage-keeper/internal/cpa/dto/response"
 	"cpa-usage-keeper/internal/entities"
@@ -26,8 +26,8 @@ func TestMetadataSnapshotDoesNotOverwriteCompletedCredentialMutation(t *testing.
 		name               string
 		provider, priority bool
 	}{
-		{name: "auth-file-status"},
-		{name: "auth-file-priority", priority: true},
+		{name: "credential-status"},
+		{name: "credential-priority", priority: true},
 		{name: "provider-status", provider: true},
 		{name: "provider-priority", provider: true, priority: true},
 	} {
@@ -43,7 +43,7 @@ func TestMetadataSnapshotDoesNotOverwriteCompletedCredentialMutation(t *testing.
 						APIKey: "test-key", AuthIndex: "target", Priority: metadataIntPointer(0), Disabled: metadataBoolPointer(false),
 					}}
 				} else {
-					fetcher.setAuthFiles([]authfiles.AuthFile{{
+					fetcher.setCredentials([]credentials.Credential{{
 						AuthIndex: "target", Name: "target.json", Type: "codex", Provider: "codex",
 						Priority: metadataIntPointer(0), Disabled: metadataBoolPointer(false),
 					}})
@@ -57,7 +57,7 @@ func TestMetadataSnapshotDoesNotOverwriteCompletedCredentialMutation(t *testing.
 				if provider {
 					fetcher.standardResults["codex"].Payload[0].Name = "stale-snapshot"
 				} else {
-					fetcher.authFilesResult.Payload.Files[0].Email = "stale-snapshot"
+					fetcher.credentialsResult.Payload.Files[0].Email = "stale-snapshot"
 				}
 				// 管理 Key 是独立来源，即使本轮凭据快照失效也应完成同步。
 				fetcher.managementAPIKeysResult.Payload.APIKeys = []string{"independent-key"}
@@ -96,7 +96,7 @@ func TestMetadataSnapshotDoesNotOverwriteCompletedCredentialMutation(t *testing.
 				}
 				statusService := service.NewCredentialStatusService(db, client, refresh, locks, coordinator)
 				priorityService := service.NewCredentialPriorityService(db, client, refresh, locks, coordinator)
-				setDisabled, setPriority := statusService.SetAuthFileDisabled, priorityService.SetAuthFilePriority
+				setDisabled, setPriority := statusService.SetCredentialDisabled, priorityService.SetCredentialPriority
 				if provider {
 					setDisabled, setPriority = statusService.SetAIProviderDisabled, priorityService.SetAIProviderPriority
 				}
@@ -110,7 +110,7 @@ func TestMetadataSnapshotDoesNotOverwriteCompletedCredentialMutation(t *testing.
 				if (err == nil) != (outcome == "success") {
 					t.Fatalf("mutation outcome %s: %v", outcome, err)
 				}
-				authType := entities.UsageIdentityAuthTypeAuthFile
+				authType := entities.UsageIdentityAuthTypeCredential
 				if provider {
 					authType = entities.UsageIdentityAuthTypeAIProvider
 				}
@@ -153,8 +153,8 @@ func TestMetadataSnapshotDoesNotOverwriteCompletedCredentialMutation(t *testing.
 					fetcher.standardResults["codex"].Payload[0].Priority = metadataIntPointer(10)
 					fetcher.standardResults["codex"].Payload[0].Disabled = metadataBoolPointer(true)
 				} else {
-					fetcher.authFilesResult.Payload.Files[0].Priority = metadataIntPointer(10)
-					fetcher.authFilesResult.Payload.Files[0].Disabled = metadataBoolPointer(true)
+					fetcher.credentialsResult.Payload.Files[0].Priority = metadataIntPointer(10)
+					fetcher.credentialsResult.Payload.Files[0].Disabled = metadataBoolPointer(true)
 				}
 				if err := syncer.SyncMetadata(ctx); err != nil {
 					t.Fatal(err)
@@ -231,7 +231,7 @@ func TestMetadataSnapshotDoesNotRevertOpenAIGroupPriority(t *testing.T) {
 	}
 }
 
-// Auth Files 已读取；provider 读取被阻塞，尚未进入任何凭据本地 diff/写入。
+// Credentials 已读取；provider 读取被阻塞，尚未进入任何凭据本地 diff/写入。
 func startHeldMetadataSnapshot(t *testing.T, ctx context.Context, syncer *service.SyncService, fetcher *metadataTestFetcher) func() error {
 	t.Helper()
 	captured, release := make(chan struct{}), make(chan struct{})
