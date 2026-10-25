@@ -24,29 +24,31 @@ type codexQuotaEfficiencyUsageCursor struct {
 }
 
 func streamCodexQuotaEfficiencyUsageRead(ctx context.Context, db *gorm.DB, provider, authIndex string, read usageEventTimeRead, cursor *codexQuotaEfficiencyUsageCursor) error {
-	// 同一账号热更新后可能换 provider；保留只读路由、原投影和账号/时间索引范围。
+	// 同一账号热更新后可能换 provider；保留只读路由和账号/时间索引范围。
+	// 一元 + 保留原值类型并绕过 DATETIME 解析；排序限定原列，避免 alias 触发临时排序。
 	rows, err := read.query(db.WithContext(ctx).Clauses(dbresolver.Read).
 		Table("usage_events INDEXED BY idx_usage_events_auth_index_timestamp_id").
-		Select(`timestamp, COALESCE(failed, 0), COALESCE(input_tokens, 0), COALESCE(output_tokens, 0), COALESCE(reasoning_tokens, 0),
+		Select(`+timestamp AS timestamp, COALESCE(failed, 0), COALESCE(input_tokens, 0), COALESCE(output_tokens, 0), COALESCE(reasoning_tokens, 0),
 			cache_read_tokens, cache_creation_tokens, COALESCE(total_tokens, 0), cost_usd, cost_available`).
 		Where("auth_type = ? AND auth_index = ? AND provider = ?", "oauth", authIndex, provider)).
-		Order("timestamp ASC, id ASC").Rows()
+		Order("usage_events.timestamp ASC, usage_events.id ASC").Rows()
 	if err != nil {
 		return fmt.Errorf("stream codex quota efficiency usage: %w", err)
 	}
 	// 每段结束或出错即释放当前 reader，下一段始终只打开一个游标。
 	defer rows.Close()
 	var event codexQuotaEfficiencyUsageEventRow
+	var storedTimestamp codexQuotaEfficiencyEventTime
 	var storedCost sql.NullFloat64
 	var storedAvailable sql.NullBool
 	for rows.Next() {
 		if err := rows.Scan(
-			&event.Timestamp, &event.Failed, &event.InputTokens, &event.OutputTokens, &event.ReasoningTokens,
+			&storedTimestamp, &event.Failed, &event.InputTokens, &event.OutputTokens, &event.ReasoningTokens,
 			&event.CacheReadTokens, &event.CacheCreationTokens, &event.TotalTokens, &storedCost, &storedAvailable,
 		); err != nil {
 			return fmt.Errorf("scan codex quota efficiency usage: %w", err)
 		}
-		event.Timestamp = timeutil.NormalizeStorageTime(event.Timestamp)
+		event.Timestamp = timeutil.NormalizeStorageTime(storedTimestamp.Time)
 		// UTC 边界秒的候选范围较宽；真实时间裁剪必须先于费用校验和任何统计。
 		if !read.contains(event.Timestamp) {
 			continue

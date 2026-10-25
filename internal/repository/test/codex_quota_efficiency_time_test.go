@@ -275,7 +275,7 @@ func TestQuotaEfficiencyTimeReadQueriesAreBoundedAndIndexed(t *testing.T) {
 					t.Fatalf("12 cycles require %d timezone reads, got %d: %v", tc.reads, len(statements), statements)
 				}
 				for _, statement := range statements {
-					if !strings.Contains(statement, "ORDER BY timestamp ASC, id ASC") {
+					if !strings.Contains(statement, "ORDER BY usage_events.timestamp ASC, usage_events.id ASC") {
 						t.Fatalf("missing deterministic index order: %s", statement)
 					}
 					var plan []struct{ Detail string }

@@ -158,12 +158,12 @@ func assertQuotaEfficiencySegmentProjection(t *testing.T, statements []quotaEffi
 		t.Fatalf("expected one parent, one segment and one event read, got %+v", statements)
 	}
 	statement := statements[1]
-	columns := "id, cycle_id, remaining_percent, first_observed_at, last_observed_at, observation_count"
+	columns := "id, cycle_id, remaining_percent, +first_observed_at AS first_observed_at, +last_observed_at AS last_observed_at, observation_count"
 	var ids []string
 	for _, id := range cycleIDs {
 		ids = append(ids, fmt.Sprint(id))
 	}
-	want := "SELECT " + columns + " FROM `quota_percent_segments` WHERE cycle_id IN (" + strings.Join(ids, ",") + ") ORDER BY cycle_id ASC, first_observed_at ASC, id ASC"
+	want := "SELECT " + columns + " FROM `quota_percent_segments` WHERE cycle_id IN (" + strings.Join(ids, ",") + ") ORDER BY quota_percent_segments.cycle_id ASC, quota_percent_segments.first_observed_at ASC, quota_percent_segments.id ASC"
 	if statement.sql != want || statement.rows != rows {
 		t.Fatalf("expected only returned cycles and six stored columns (%d rows):\nwant %s\ngot  %s (%d rows)", rows, want, statement.sql, statement.rows)
 	}

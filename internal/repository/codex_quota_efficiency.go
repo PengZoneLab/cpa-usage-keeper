@@ -38,8 +38,8 @@ type codexQuotaEfficiencySegmentRow struct {
 	ID               int64
 	CycleID          int64
 	RemainingPercent int
-	FirstObservedAt  time.Time `gorm:"serializer:sortableTime"`
-	LastObservedAt   time.Time `gorm:"serializer:sortableTime"`
+	FirstObservedAt  codexQuotaEfficiencyObservedTime
+	LastObservedAt   codexQuotaEfficiencyObservedTime
 	ObservationCount int64
 }
 
@@ -149,12 +149,13 @@ func BuildCodexQuotaEfficiencyHistory(ctx context.Context, db *gorm.DB, query re
 	}
 
 	// 所有子段用一次轻量 IN 查询读出，不允许对父周期逐条 Preload。
+	// 一元 + 只绕过 DATETIME 声明解析，保留原值类型；排序限定原列，避免 alias 触发额外排序。
 	var segments []codexQuotaEfficiencySegmentRow
 	if err := db.WithContext(ctx).Clauses(dbresolver.Read).
 		Table("quota_percent_segments").
-		Select("id, cycle_id, remaining_percent, first_observed_at, last_observed_at, observation_count").
+		Select("id, cycle_id, remaining_percent, +first_observed_at AS first_observed_at, +last_observed_at AS last_observed_at, observation_count").
 		Where("cycle_id IN ?", cycleIDs).
-		Order("cycle_id ASC, first_observed_at ASC, id ASC").
+		Order("quota_percent_segments.cycle_id ASC, quota_percent_segments.first_observed_at ASC, quota_percent_segments.id ASC").
 		Find(&segments).Error; err != nil {
 		return result, fmt.Errorf("list codex quota efficiency segments: %w", err)
 	}
@@ -390,8 +391,8 @@ func buildCodexQuotaEfficiencyTransitions(segments []codexQuotaEfficiencySegment
 			PercentagePoints:     points,
 			IsDirect:             points == 1,
 			// 前一百分比首次出现后的请求共同消耗这一档额度；重复观察不能把区间起点向后推。
-			IntervalStartedAt:     previous.FirstObservedAt,
-			IntervalEndedAt:       current.FirstObservedAt,
+			IntervalStartedAt:     previous.FirstObservedAt.Time,
+			IntervalEndedAt:       current.FirstObservedAt.Time,
 			Usage:                 repositorydto.CodexQuotaEfficiencyUsage{CostAvailable: true},
 			CostPerPointAvailable: true,
 		}
