@@ -11,6 +11,7 @@ import { CodexQuotaHistoryPanel } from '../CodexQuotaHistoryPanel'
 
 const fetchCodexQuotaHistory = vi.fn()
 const deleteCodexQuotaHistoryCycle = vi.fn()
+const translationState = vi.hoisted(() => ({ language: 'en-US' }))
 type QuotaEfficiencyChartType = 'bar' | 'line'
 type QuotaEfficiencyChartData = ChartData<QuotaEfficiencyChartType, Array<number | null>, string>
 type QuotaEfficiencyChartOptions = ChartOptions<QuotaEfficiencyChartType>
@@ -41,7 +42,7 @@ vi.mock('react-i18next', () => {
   const t = (key: string, params?: Record<string, unknown>) => params ? `${key}:${JSON.stringify(params)}` : key
   return {
     initReactI18next: { type: '3rdParty', init: () => undefined },
-    useTranslation: () => ({ t, i18n: { resolvedLanguage: 'en-US', language: 'en-US' } }),
+    useTranslation: () => ({ t, i18n: { resolvedLanguage: translationState.language, language: translationState.language } }),
   }
 })
 
@@ -146,6 +147,7 @@ describe('CodexQuotaHistoryPanel', () => {
 
   beforeEach(() => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    translationState.language = 'en-US'
     useThemeStore.setState({ theme: 'light', resolvedTheme: 'light' })
     latestChartData = null
     latestChartOptions = null
@@ -876,5 +878,93 @@ describe('CodexQuotaHistoryPanel', () => {
     expect(document.body.textContent).toContain('"start":"Aug 21, 13:01"')
     expect(document.body.textContent).toContain('"end":"Aug 21, 14:02"')
     expect(document.body.textContent).toContain('"start":"Aug 17, 00:00"')
+  })
+
+  it('retains the existing dash fallback when an older response omits a timestamp', async () => {
+    const missing = cloneResponse()
+    missing.cycles[0].first_observed_at = undefined as unknown as string
+    fetchCodexQuotaHistory.mockResolvedValueOnce(missing)
+    await renderPanel()
+    expect(container.querySelector('[data-codex-quota-observed-range]')?.textContent).toContain('"start":"—"')
+    expect(container.querySelector('[data-codex-quota-cycle-id="2"] [data-codex-quota-cycle-select]')?.textContent).toContain('"value":"—"')
+  })
+
+  const fallbackResponse = (): CodexQuotaHistoryResponse => {
+    const next = cloneResponse()
+    Object.assign(next.cycles[0], {
+      window_started_at: '2026-11-01T01:30:00-07:00', reset_at: '2026-11-01T04:00:00-08:00',
+      effective_started_at: '2026-11-01T01:30:00-07:00', effective_ended_at: '2026-11-01T04:00:00-08:00',
+      first_observed_at: '2026-11-01T01:50:00-07:00', last_observed_at: '2026-11-01T01:30:00-08:00',
+    })
+    Object.assign(next.cycles[0].transitions[0], {
+      interval_started_at: '2026-11-01T01:50:00-07:00', interval_ended_at: '2026-11-01T01:20:00-08:00',
+    })
+    Object.assign(next.cycles[0].transitions[1], {
+      interval_started_at: '2026-11-01T01:20:00-08:00', interval_ended_at: '2026-11-01T01:30:00-08:00',
+    })
+    Object.assign(next.cycles[1], {
+      window_started_at: '2026-11-01T00:00:00-07:00', reset_at: '2026-11-01T01:30:00-07:00',
+      effective_started_at: '2026-11-01T00:00:00-07:00', effective_ended_at: '2026-11-01T01:30:00-07:00',
+      first_observed_at: '2026-11-01T00:10:00-07:00', last_observed_at: '2026-11-01T01:30:00-07:00',
+      transitions: [{ ...completedTransition(), interval_started_at: '2026-11-01T00:10:00-07:00', interval_ended_at: '2026-11-01T01:30:00-07:00' }],
+    })
+    return next
+  }
+
+  it.each(['en-US', 'zh-CN'])('disambiguates every fallback timestamp surface in %s before selecting or expanding cycles', async (locale) => {
+    translationState.language = locale
+    fetchCodexQuotaHistory.mockResolvedValue(fallbackResponse())
+    await renderPanel()
+    const wallLabel = (clock: string) => new Intl.DateTimeFormat(locale, {
+      month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'UTC',
+    }).format(new Date(`2026-11-01T${clock}:00Z`))
+    const first = `${wallLabel('01:30')} UTC-07:00`
+    const second = `${wallLabel('01:30')} UTC-08:00`
+    const before = `${wallLabel('01:50')} UTC-07:00`
+    const after = `${wallLabel('01:20')} UTC-08:00`
+    const chart = () => container.querySelector('[data-codex-quota-chart-cycle-id]')!
+    const selection = () => container.querySelector('[data-codex-quota-cycle-id="2"] [data-codex-quota-cycle-select]')!
+    const initialSelection = selection().textContent
+    expect(initialSelection).toContain(first)
+    expect(chart().querySelector('[data-codex-quota-cycle-range]')?.textContent).toContain(first)
+    expect(chart().querySelector('[data-codex-quota-observed-range]')?.textContent).toContain(before)
+    expect(chart().querySelector('[data-codex-quota-observed-range]')?.textContent).toContain(second)
+    expect(chart().querySelector('[data-codex-quota-accessible-summary]')?.textContent).toContain(`${before} → ${after}`)
+    const tooltip = latestChartOptions!.plugins!.tooltip!.callbacks!.afterBody as unknown as (items: { dataIndex: number }[]) => string[]
+    expect(tooltip([{ dataIndex: 0 }])).toContain(`usage_stats.credentials_quota_history_interval: ${before} → ${after}`)
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-codex-quota-cycle-id="2"] button[aria-expanded]')!.click())
+    expect(container.querySelector('[data-codex-quota-cycle-id="2"] [data-codex-quota-transition]')?.textContent).toContain(before)
+    expect(container.querySelector('[data-codex-quota-cycle-id="2"] [data-codex-quota-transition]')?.textContent).toContain(after)
+    await selectCycle(1)
+    expect(chart().querySelector('[data-codex-quota-cycle-range]')?.textContent).toContain(first)
+    await selectCycle(2)
+    expect(selection().textContent).toBe(initialSelection)
+    await openDelete(2)
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain(first)
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain(`${wallLabel('04:00')} UTC-08:00`)
+    await act(async () => modalButton('common.cancel').click())
+    expect(selection().textContent).toBe(initialSelection)
+    expect(fetchCodexQuotaHistory).toHaveBeenCalledTimes(1)
+  })
+
+  it('rebuilds timestamp suffixes for a new role response and language without changing normal text', async () => {
+    fetchCodexQuotaHistory.mockResolvedValueOnce(fallbackResponse())
+    await renderPanel()
+    expect(container.textContent).toContain('UTC-07:00')
+    const normal = cloneResponse()
+    normal.selected_window = normal.windows[1]
+    fetchCodexQuotaHistory.mockResolvedValueOnce(normal)
+    await act(async () => windowButton('secondary').click())
+    expect(container.textContent).not.toContain('UTC-')
+    expect(container.querySelector('[data-codex-quota-cycle-range]')?.textContent).toContain('"start":"Aug 17, 00:00","end":"Aug 24, 00:00"')
+    translationState.language = 'zh-CN'
+    await renderPanel()
+    const start = new Intl.DateTimeFormat('zh-CN', { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'UTC' }).format(new Date('2026-08-17T00:00:00Z'))
+    expect(container.querySelector('[data-codex-quota-cycle-range]')?.textContent).toContain(start)
+    expect(container.textContent).not.toContain('UTC-')
+    fetchCodexQuotaHistory.mockResolvedValueOnce(fallbackResponse())
+    await act(async () => windowButton('primary').click())
+    expect(container.querySelector('[data-codex-quota-cycle-range]')?.textContent).toContain('UTC-07:00')
+    expect(fetchCodexQuotaHistory).toHaveBeenCalledTimes(3)
   })
 })

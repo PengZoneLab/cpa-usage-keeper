@@ -17,6 +17,7 @@ import { useThemeStore } from '@/stores'
 import { formatCompactNumber, formatUsd } from '@/utils/usage'
 import { buildUsageChartTooltipStyle, getUsageChartTheme, toUsageChartGradientFill, USAGE_CHART_REQUESTS_LINE_COLOR, type UsageChartGradientColor } from '@/utils/usage/chartConfig'
 import { quotaRemainingStatus } from './credentialViewModels'
+import { createQuotaHistoryTimeFormatter, type QuotaHistoryTimeFormatter } from './quotaHistoryTimeLabels'
 import styles from './CodexQuotaHistoryPanel.module.scss'
 
 type QuotaEfficiencyChartType = 'bar' | 'line'
@@ -183,6 +184,10 @@ function QuotaHistoryPanel({ authIndex, onAuthRequired }: CodexQuotaHistoryPanel
   }
 
   const locale = i18n?.resolvedLanguage || i18n?.language
+  const formatTime = useMemo(
+    () => createQuotaHistoryTimeFormatter(history?.cycles ?? [], (value) => formatDateTime(value, locale)),
+    [history, locale],
+  )
   // 周期状态和新旧顺序沿用后端；图表只读取所选角色中稳定 id 对应的周期。
   const selectedCycle = history?.cycles.find((cycle) => cycle.id === selection.cycleId) ?? null
   const cycleSummaries = useMemo(() => new Map(
@@ -230,12 +235,12 @@ function QuotaHistoryPanel({ authIndex, onAuthRequired }: CodexQuotaHistoryPanel
             cycle={selectedCycle}
             window={history.selected_window}
             isDark={resolvedTheme === 'dark'}
-            locale={locale}
+            formatTime={formatTime}
             chartRef={chartRef}
           />
           </ChartLifecycleProvider>
           <CyclesList key={history.selected_window?.window_role ?? 'empty'}
-            cycles={history.cycles} locale={locale} summaries={cycleSummaries}
+            cycles={history.cycles} formatTime={formatTime} summaries={cycleSummaries}
             selectedCycleId={selectedCycle?.id ?? null}
             onSelect={(cycleId) => setSelection({ windowRole: history.selected_window?.window_role ?? null, cycleId })}
             onReturnToChart={() => {
@@ -274,8 +279,8 @@ function QuotaHistoryPanel({ authIndex, onAuthRequired }: CodexQuotaHistoryPanel
         {deleteTarget ? <>
           <p>{t('usage_stats.credentials_quota_history_delete_description')}</p>
           <p>{t('usage_stats.credentials_quota_history_cycle_range', {
-            start: formatDateTime(deleteTarget.window_started_at, locale),
-            end: formatDateTime(deleteTarget.reset_at, locale),
+            start: formatTime(deleteTarget.window_started_at),
+            end: formatTime(deleteTarget.reset_at),
           })}</p>
           <p>{t('usage_stats.credentials_quota_history_percent_summary', {
             percent: deleteTarget.last_remaining_percent ?? '—', count: deleteTarget.observation_count,
@@ -291,13 +296,13 @@ function CycleEfficiencyChart({
   cycle,
   window,
   isDark,
-  locale,
+  formatTime,
   chartRef,
 }: {
   cycle: CodexQuotaHistoryCycle | null
   window: CodexQuotaHistoryWindow | null
   isDark: boolean
-  locale?: string
+  formatTime: QuotaHistoryTimeFormatter
   chartRef: RefObject<HTMLElement | null>
 }) {
   const { t } = useTranslation()
@@ -306,8 +311,8 @@ function CycleEfficiencyChart({
     ? 'usage_stats.credentials_quota_history_status_current'
     : 'usage_stats.credentials_quota_history_status_completed')
   const chart = useMemo(
-    () => buildEfficiencyChart(cycle?.transitions ?? [], isDark, t, locale),
-    [cycle?.transitions, isDark, locale, t],
+    () => buildEfficiencyChart(cycle?.transitions ?? [], isDark, t, formatTime),
+    [cycle?.transitions, isDark, t, formatTime],
   )
 
   return (
@@ -325,14 +330,14 @@ function CycleEfficiencyChart({
               ? <>
                 <span className={styles.chartCycleRange} data-codex-quota-cycle-range="true">
                   {t('usage_stats.credentials_quota_history_cycle_range', {
-                    start: formatDateTime(cycle.effective_started_at, locale),
-                    end: formatDateTime(cycle.status === 'current' ? cycle.reset_at : cycle.effective_ended_at, locale),
+                    start: formatTime(cycle.effective_started_at),
+                    end: formatTime(cycle.status === 'current' ? cycle.reset_at : cycle.effective_ended_at),
                   })}
                 </span>
                 <span className={styles.chartObservedRange} data-codex-quota-observed-range="true">
                   {t('usage_stats.credentials_quota_history_observed_range', {
-                    start: formatDateTime(cycle.first_observed_at, locale),
-                    end: formatDateTime(cycle.last_observed_at, locale),
+                    start: formatTime(cycle.first_observed_at),
+                    end: formatTime(cycle.last_observed_at),
                   })}
                 </span>
               </>
@@ -368,7 +373,7 @@ function CycleEfficiencyChart({
             <div className={styles.chartFrame} data-codex-quota-efficiency-chart="combined" aria-hidden="true">
               <Chart type="bar" data={chart.data} options={chart.options} />
             </div>
-            <CycleAccessibleSummary transitions={cycle.transitions} locale={locale} titleId={titleId} />
+            <CycleAccessibleSummary transitions={cycle.transitions} formatTime={formatTime} titleId={titleId} />
             <div className={styles.chartLegend}>
               <span><i className={styles.directDot} />{t('usage_stats.credentials_quota_history_direct')}</span>
               <span><i className={styles.crossDot} />{t('usage_stats.credentials_quota_history_cross')}</span>
@@ -548,11 +553,11 @@ function formatQuotaSummaryPercentage(value: number): string {
 
 function CycleAccessibleSummary({
   transitions,
-  locale,
+  formatTime,
   titleId,
 }: {
   transitions: CodexQuotaHistoryTransition[]
-  locale?: string
+  formatTime: QuotaHistoryTimeFormatter
   titleId: string
 }) {
   const { t } = useTranslation()
@@ -566,7 +571,7 @@ function CycleAccessibleSummary({
         <li key={`${transition.interval_started_at}:${transition.to_remaining_percent}:${index}`}>
           <span>{transition.from_remaining_percent}% → {transition.to_remaining_percent}%.</span>{' '}
           <span>
-            {t('usage_stats.credentials_quota_history_interval')}: {formatDateTime(transition.interval_started_at, locale)} → {formatDateTime(transition.interval_ended_at, locale)}.
+            {t('usage_stats.credentials_quota_history_interval')}: {formatTime(transition.interval_started_at)} → {formatTime(transition.interval_ended_at)}.
           </span>{' '}
           <span>
             {transition.is_direct
@@ -595,7 +600,7 @@ function CycleAccessibleSummary({
 
 function CyclesList({
   cycles,
-  locale,
+  formatTime,
   summaries,
   onDelete,
   deleteDisabled,
@@ -604,7 +609,7 @@ function CyclesList({
   onReturnToChart,
 }: {
   cycles: CodexQuotaHistoryCycle[]
-  locale?: string
+  formatTime: QuotaHistoryTimeFormatter
   summaries: Map<number, QuotaCycleSummary>
   onDelete: (cycle: CodexQuotaHistoryCycle) => void
   deleteDisabled: boolean
@@ -620,7 +625,7 @@ function CyclesList({
       ) : (
         <>
           {cycles.map((cycle) => (
-            <CycleCard key={cycle.id} cycle={cycle} locale={locale} summary={summaries.get(cycle.id) ?? null}
+            <CycleCard key={cycle.id} cycle={cycle} formatTime={formatTime} summary={summaries.get(cycle.id) ?? null}
               selected={selectedCycleId === cycle.id} onSelect={() => onSelect(cycle.id)} onReturnToChart={onReturnToChart}
               onDelete={() => onDelete(cycle)} deleteDisabled={deleteDisabled} />
           ))}
@@ -632,7 +637,7 @@ function CyclesList({
 
 function CycleCard({
   cycle,
-  locale,
+  formatTime,
   summary,
   onDelete,
   deleteDisabled,
@@ -641,7 +646,7 @@ function CycleCard({
   onReturnToChart,
 }: {
   cycle: CodexQuotaHistoryCycle
-  locale?: string
+  formatTime: QuotaHistoryTimeFormatter
   summary: QuotaCycleSummary | null
   onDelete: () => void
   deleteDisabled: boolean
@@ -669,9 +674,9 @@ function CycleCard({
           <span>{t('usage_stats.credentials_quota_history_cycle_label')}</span>
           <strong>
             <span className={styles.cycleTimeRange}>
-              {formatDateTime(cycle.effective_started_at, locale)}
+              {formatTime(cycle.effective_started_at)}
               {' → '}
-              {formatDateTime(cycle.status === 'current' ? cycle.reset_at : cycle.effective_ended_at, locale)}
+              {formatTime(cycle.status === 'current' ? cycle.reset_at : cycle.effective_ended_at)}
             </span>
             <i className={cycle.status === 'current' ? styles.currentStatus : styles.completedStatus}>{statusLabel}</i>
             {selected ? <span className={styles.selectedIndicator}><IconCheck size={11} aria-hidden="true" />{t('usage_stats.credentials_quota_history_selected')}</span> : null}
@@ -679,7 +684,7 @@ function CycleCard({
           <small>
             {formatCycleWindowLabel(cycle.window_seconds, t)}
             {' · '}
-            {t('usage_stats.credentials_quota_history_first_observed', { value: formatDateTime(cycle.first_observed_at, locale) })}
+            {t('usage_stats.credentials_quota_history_first_observed', { value: formatTime(cycle.first_observed_at) })}
             {' · '}
             {t('usage_stats.credentials_quota_history_percent_summary', {
               percent: cycle.last_remaining_percent ?? '—',
@@ -720,7 +725,7 @@ function CycleCard({
           {cycle.transitions.length === 0 ? (
             <div className={styles.noCycleTransitions}>{t('usage_stats.credentials_quota_history_no_transition')}</div>
           ) : cycle.transitions.map((transition, index) => (
-            <TransitionRow key={`${transition.interval_started_at}:${transition.to_remaining_percent}:${index}`} transition={transition} locale={locale} />
+            <TransitionRow key={`${transition.interval_started_at}:${transition.to_remaining_percent}:${index}`} transition={transition} formatTime={formatTime} />
           ))}
         </> : null}
       </div>
@@ -768,7 +773,7 @@ function CycleQuotaSummary({
   )
 }
 
-function TransitionRow({ transition, locale }: { transition: CodexQuotaHistoryTransition; locale?: string }) {
+function TransitionRow({ transition, formatTime }: { transition: CodexQuotaHistoryTransition; formatTime: QuotaHistoryTimeFormatter }) {
   const { t } = useTranslation()
   return (
     <div className={styles.transitionRow} data-codex-quota-transition={transition.is_direct ? 'direct' : 'cross'}>
@@ -781,8 +786,8 @@ function TransitionRow({ transition, locale }: { transition: CodexQuotaHistoryTr
         </span>
       </div>
       <div className={styles.intervalCell}>
-        <span>{formatDateTime(transition.interval_started_at, locale)}</span>
-        <span>→ {formatDateTime(transition.interval_ended_at, locale)}</span>
+        <span>{formatTime(transition.interval_started_at)}</span>
+        <span>→ {formatTime(transition.interval_ended_at)}</span>
       </div>
       <div className={styles.valueCell}>
         <strong>{formatCompactNumber(transition.usage.total_tokens)} Token</strong>
@@ -800,7 +805,7 @@ function buildEfficiencyChart(
   transitions: CodexQuotaHistoryTransition[],
   isDark: boolean,
   t: (key: string) => string,
-  locale?: string,
+  formatTime: QuotaHistoryTimeFormatter,
 ): {
   data: QuotaEfficiencyChartData
   options: QuotaEfficiencyChartOptions
@@ -896,7 +901,7 @@ function buildEfficiencyChart(
             afterBody: (items) => {
               const point = points[items[0]?.dataIndex]
               if (!point) return []
-              const interval = `${t('usage_stats.credentials_quota_history_interval')}: ${formatDateTime(point.transition.interval_started_at, locale)} → ${formatDateTime(point.transition.interval_ended_at, locale)}`
+              const interval = `${t('usage_stats.credentials_quota_history_interval')}: ${formatTime(point.transition.interval_started_at)} → ${formatTime(point.transition.interval_ended_at)}`
               const remaining = `${t('usage_stats.credentials_quota_history_remaining_percentage')}: ${point.remainingPercent}%`
               // Direct 与跨百分点样本统一显示真实观察时间；跨百分点再补充整段变化和总用量。
               if (point.transition.is_direct) return [remaining, interval]
