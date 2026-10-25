@@ -744,21 +744,39 @@ describe('CodexQuotaHistoryPanel', () => {
     expect(estimatedUnused?.querySelector('[data-codex-quota-summary-metric]')).toBeNull()
   })
 
-  it('derives completed full-quota and unused estimates from settled transitions', async () => {
-    const completedEstimateResponse = cloneResponse()
-    const completedCycle = completedEstimateResponse.cycles[1]
+  it.each([
+    {
+      name: 'derives completed full-quota and unused estimates from settled transitions',
+      cycleCostAvailable: true, transitionCostAvailable: true,
+      fullCost: '$100.00', unusedCost: '$98.00',
+    },
+    {
+      name: 'keeps completed settled estimates visible while marking unavailable Cost',
+      cycleCostAvailable: false, transitionCostAvailable: false,
+      fullCost: 'usage_stats.credentials_quota_history_cost_missing', unusedCost: 'usage_stats.credentials_quota_history_cost_missing',
+    },
+    {
+      name: 'excludes unavailable unsettled Cost only from the full-quota estimate',
+      cycleCostAvailable: false, transitionCostAvailable: true,
+      fullCost: '$100.00', unusedCost: 'usage_stats.credentials_quota_history_cost_missing',
+    },
+  ].map(testCase => [testCase.name, testCase] as const))('%s', async (_name, { cycleCostAvailable, transitionCostAvailable, fullCost, unusedCost }) => {
+    const next = cloneResponse()
+    const completedCycle = next.cycles[1]
     completedCycle.last_remaining_percent = 92
-    completedCycle.transitions = [completedTransition()]
-    fetchCodexQuotaHistory.mockResolvedValue(completedEstimateResponse)
-
+    completedCycle.usage.cost_available = cycleCostAvailable
+    completedCycle.transitions = [completedTransition(transitionCostAvailable)]
+    fetchCodexQuotaHistory.mockResolvedValue(next)
     await renderPanel()
 
     const completedSummary = cycleCard(1).querySelector('[data-codex-quota-cycle-summary]')
-    expect(completedSummary?.querySelector('[data-codex-quota-summary="full-estimate"] [data-codex-quota-summary-metric="tokens"]')?.textContent).toBe('100.00K')
+    const fullEstimate = completedSummary?.querySelector('[data-codex-quota-summary="full-estimate"]')
+    expect(metricText(fullEstimate, 'tokens')).toBe('100.00K')
+    expect(metricText(fullEstimate, 'cost')).toBe(fullCost)
     const estimatedUnused = completedSummary?.querySelector('[data-codex-quota-summary="estimated-unused"]')
     expect(metricText(estimatedUnused, 'percentage')).toBe('98%')
     expect(metricText(estimatedUnused, 'tokens')).toBe('98.00K')
-    expect(metricText(estimatedUnused, 'cost')).toBe('$98.00')
+    expect(metricText(estimatedUnused, 'cost')).toBe(unusedCost)
   })
 
   it('keeps a current 76 percent baseline visible in the cycle list before any transition exists', async () => {
@@ -831,42 +849,6 @@ describe('CodexQuotaHistoryPanel', () => {
       .toBe('usage_stats.credentials_quota_history_cost_missing')
     expect(completedSummary?.querySelector('[data-codex-quota-summary="full-estimate"]')?.textContent).toContain('—')
     expect(completedSummary?.querySelector('[data-codex-quota-summary="estimated-unused"]')?.textContent).toContain('—')
-  })
-
-  it('keeps completed settled estimates visible while marking unavailable Cost', async () => {
-    const missingCycleCostResponse = cloneResponse()
-    const completedCycle = missingCycleCostResponse.cycles[1]
-    completedCycle.last_remaining_percent = 92
-    completedCycle.usage.cost_available = false
-    completedCycle.transitions = [completedTransition(false)]
-    fetchCodexQuotaHistory.mockResolvedValue(missingCycleCostResponse)
-    await renderPanel()
-
-    const completedSummary = cycleCard(1).querySelector('[data-codex-quota-cycle-summary]')
-    expect(completedSummary?.querySelector('[data-codex-quota-summary="full-estimate"] [data-codex-quota-summary-metric="tokens"]')?.textContent)
-      .toBe('100.00K')
-    expect(completedSummary?.querySelector('[data-codex-quota-summary="full-estimate"] [data-codex-quota-summary-metric="cost"]')?.textContent)
-      .toBe('usage_stats.credentials_quota_history_cost_missing')
-    expect(completedSummary?.querySelector('[data-codex-quota-summary="estimated-unused"] [data-codex-quota-summary-metric="tokens"]')?.textContent)
-      .toBe('98.00K')
-    expect(completedSummary?.querySelector('[data-codex-quota-summary="estimated-unused"] [data-codex-quota-summary-metric="cost"]')?.textContent)
-      .toBe('usage_stats.credentials_quota_history_cost_missing')
-  })
-
-  it('excludes unavailable unsettled Cost only from the full-quota estimate', async () => {
-    const unsettledCostResponse = cloneResponse()
-    const completedCycle = unsettledCostResponse.cycles[1]
-    completedCycle.last_remaining_percent = 92
-    completedCycle.usage.cost_available = false
-    completedCycle.transitions = [completedTransition()]
-    fetchCodexQuotaHistory.mockResolvedValue(unsettledCostResponse)
-    await renderPanel()
-
-    const completedSummary = cycleCard(1).querySelector('[data-codex-quota-cycle-summary]')
-    expect(completedSummary?.querySelector('[data-codex-quota-summary="full-estimate"] [data-codex-quota-summary-metric="cost"]')?.textContent)
-      .toBe('$100.00')
-    expect(completedSummary?.querySelector('[data-codex-quota-summary="estimated-unused"] [data-codex-quota-summary-metric="cost"]')?.textContent)
-      .toBe('usage_stats.credentials_quota_history_cost_missing')
   })
 
   it('queries only the newly selected real window series', async () => {
