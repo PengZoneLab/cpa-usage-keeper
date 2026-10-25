@@ -195,6 +195,8 @@ func (s *credentialPriorityService) requestRefresh() {
 
 func priorityWriteError(statusCode int, err error) error {
 	switch statusCode {
+	case http.StatusPreconditionFailed:
+		return fmt.Errorf("%w: upstream configuration", ErrCredentialConfigChanged)
 	case http.StatusNotFound:
 		return fmt.Errorf("%w: upstream target", ErrCredentialPriorityNotFound)
 	case http.StatusConflict:

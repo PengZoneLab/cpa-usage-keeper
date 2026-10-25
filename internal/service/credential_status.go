@@ -26,6 +26,8 @@ var (
 	ErrCredentialStatusUnsupported = errors.New("credential status is not supported")
 	// ErrCredentialStatusConflict 表示 CPA 明确拒绝单独操作该凭证，例如插件多账号文件展开出的虚拟子账号。
 	ErrCredentialStatusConflict = errors.New("credential status target cannot be changed on its own")
+	// ErrCredentialConfigChanged 表示供应商 GET 后配置已变化，本次 PUT 未保存。
+	ErrCredentialConfigChanged = errors.New("credential configuration changed")
 )
 
 // MetadataRefresher 让本地操作后尽快与 CPA 对齐，不改变当前轮询/通知模式。
@@ -152,6 +154,9 @@ func (s *credentialStatusService) SetAIProviderDisabled(ctx context.Context, aut
 	}
 	statusCode, err := s.client.UpdateProviderConfig(ctx, providerType, result.Document, result.ETag)
 	if err != nil {
+		if statusCode == http.StatusPreconditionFailed {
+			return CredentialStatusResponse{}, fmt.Errorf("%w: %s provider configuration", ErrCredentialConfigChanged, providerType)
+		}
 		if statusCode == http.StatusNotFound {
 			return CredentialStatusResponse{}, fmt.Errorf("%w: %s provider credential", ErrCredentialStatusNotFound, providerType)
 		}
