@@ -9,9 +9,9 @@ describe('request endpoint display', () => {
     ['/v1/tts', '/v1/audio/speech'],
     ['/v1/videos', '/v1/videos/generations'],
   ])('normalizes the exact alias %s with and without a method', (raw, endpoint) => {
-    expect(parseRequestEndpoint(raw)).toEqual({ requestType: '-', endpoint })
-    expect(parseRequestEndpoint(`POST ${raw}`)).toEqual({ requestType: 'SSE', endpoint })
-    expect(parseRequestEndpoint(`GET ${raw}`)).toEqual({ requestType: 'WS', endpoint })
+    for (const [prefix, requestType] of [['', '-'], ['POST ', 'SSE'], ['GET ', 'WS']]) {
+      expect(parseRequestEndpoint(`${prefix}${raw}`)).toEqual({ requestType, endpoint })
+    }
   })
 
   it.each([
