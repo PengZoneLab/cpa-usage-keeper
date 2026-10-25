@@ -125,8 +125,9 @@ func TestAuthFileBulkMutationsInvalidateOldMetadataOnAnySuccess(t *testing.T) {
 				if err := syncer.SyncMetadata(ctx); err != nil {
 					t.Fatal(err)
 				}
+				rows := loadMetadataIdentityMap(t, db)
 				for _, index := range []string{"target", "other"} {
-					row := loadMetadataIdentityMap(t, db)[metadataIdentityKey(entities.UsageIdentityAuthTypeAuthFile, index)]
+					row := rows[metadataIdentityKey(entities.UsageIdentityAuthTypeAuthFile, index)]
 					succeeded := outcome == "success" || outcome == "partial" && index == "target"
 					if operation == "delete" {
 						if row.IsDeleted != succeeded {

@@ -22,153 +22,149 @@ import (
 
 // 远端旧快照已经取到、本地 diff 尚未读取时完成用户操作，旧快照不能覆盖已经确认的新值。
 func TestMetadataSnapshotDoesNotOverwriteCompletedCredentialMutation(t *testing.T) {
-	for _, provider := range []bool{false, true} {
-		for _, priority := range []bool{false, true} {
-			for _, outcome := range []string{"success", "upstream-failure", "local-failure"} {
-				t.Run(fmt.Sprintf("provider=%v/priority=%v/%s", provider, priority, outcome), func(t *testing.T) {
-					ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-					defer cancel()
-					db := openMetadataTestDatabase(t, "metadata-mutation.db")
-					fetcher := newMetadataTestFetcher()
-					if provider {
-						fetcher.standardResults["codex"].Payload = []providerconfig.ProviderKeyConfig{{
-							APIKey: "test-key", AuthIndex: "target", Priority: metadataIntPointer(0), Disabled: metadataBoolPointer(false),
-						}}
-					} else {
-						fetcher.setAuthFiles([]authfiles.AuthFile{{
-							AuthIndex: "target", Name: "target.json", Type: "codex", Provider: "codex",
-							Priority: metadataIntPointer(0), Disabled: metadataBoolPointer(false),
-						}})
+	for _, operation := range []struct {
+		name               string
+		provider, priority bool
+	}{
+		{name: "auth-file-status"},
+		{name: "auth-file-priority", priority: true},
+		{name: "provider-status", provider: true},
+		{name: "provider-priority", provider: true, priority: true},
+	} {
+		provider, priority := operation.provider, operation.priority
+		for _, outcome := range []string{"success", "upstream-failure", "local-failure"} {
+			t.Run(operation.name+"/"+outcome, func(t *testing.T) {
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+				db := openMetadataTestDatabase(t, "metadata-mutation.db")
+				fetcher := newMetadataTestFetcher()
+				if provider {
+					fetcher.standardResults["codex"].Payload = []providerconfig.ProviderKeyConfig{{
+						APIKey: "test-key", AuthIndex: "target", Priority: metadataIntPointer(0), Disabled: metadataBoolPointer(false),
+					}}
+				} else {
+					fetcher.setAuthFiles([]authfiles.AuthFile{{
+						AuthIndex: "target", Name: "target.json", Type: "codex", Provider: "codex",
+						Priority: metadataIntPointer(0), Disabled: metadataBoolPointer(false),
+					}})
+				}
+				coordinator := &service.CredentialMetadataCoordinator{}
+				syncer := service.NewSyncServiceWithOptions(db, service.SyncServiceOptions{MetadataFetcher: fetcher, CredentialMetadata: coordinator})
+				if err := syncer.SyncMetadata(ctx); err != nil {
+					t.Fatal(err)
+				}
+				// 额外变化用于辨认整份旧快照是否仍然落库，本地写失败也能观察到差异。
+				if provider {
+					fetcher.standardResults["codex"].Payload[0].Name = "stale-snapshot"
+				} else {
+					fetcher.authFilesResult.Payload.Files[0].Email = "stale-snapshot"
+				}
+				// 管理 Key 是独立来源，即使本轮凭据快照失效也应完成同步。
+				fetcher.managementAPIKeysResult.Payload.APIKeys = []string{"independent-key"}
+				releaseSnapshot := startHeldMetadataSnapshot(t, ctx, syncer, fetcher)
+				var writes atomic.Int32
+				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Content-Type", "application/json")
+					if r.Method == http.MethodGet {
+						fmt.Fprint(w, `[{"keys":[{"api-key":"test-key","auth_index":"target","priority":0,"excluded-models":[]}]}]`)
+						return
 					}
-					coordinator := &service.CredentialMetadataCoordinator{}
-					syncer := service.NewSyncServiceWithOptions(db, service.SyncServiceOptions{MetadataFetcher: fetcher, CredentialMetadata: coordinator})
-					if err := syncer.SyncMetadata(ctx); err != nil {
+					if r.Method != http.MethodPut && r.Method != http.MethodPatch {
+						t.Errorf("unexpected method %s", r.Method)
+					}
+					writes.Add(1)
+					if outcome == "upstream-failure" {
+						w.WriteHeader(http.StatusBadGateway)
+						return
+					}
+					fmt.Fprint(w, `{"status":"ok"}`)
+				}))
+				defer server.Close()
+				client := cpa.NewClient(server.URL, "management-secret", time.Second, false)
+				locks, refresh := &service.CredentialMutationLocks{}, &credentialStatusRefresherStub{}
+				// 只让用户操作的 UPDATE 失败；放开旧同步前撤下故障，证明它是被版本拦住。
+				var failLocal atomic.Bool
+				if outcome == "local-failure" {
+					failLocal.Store(true)
+					if err := db.Callback().Update().Before("gorm:update").Register("test:fail_mutation_persist", func(tx *gorm.DB) {
+						if failLocal.Load() {
+							tx.AddError(errors.New("local persistence unavailable"))
+						}
+					}); err != nil {
 						t.Fatal(err)
 					}
-					// 额外变化用于辨认整份旧快照是否仍然落库，本地写失败也能观察到差异。
-					if provider {
-						fetcher.standardResults["codex"].Payload[0].Name = "stale-snapshot"
-					} else {
-						fetcher.authFilesResult.Payload.Files[0].Email = "stale-snapshot"
-					}
-					// 管理 Key 是独立来源，即使本轮凭据快照失效也应完成同步。
-					fetcher.managementAPIKeysResult.Payload.APIKeys = []string{"independent-key"}
-					releaseSnapshot := startHeldMetadataSnapshot(t, ctx, syncer, fetcher)
-					var writes atomic.Int32
-					server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-						w.Header().Set("Content-Type", "application/json")
-						if r.Method == http.MethodGet {
-							fmt.Fprint(w, `[{"keys":[{"api-key":"test-key","auth_index":"target","priority":0,"excluded-models":[]}]}]`)
-							return
-						}
-						if r.Method != http.MethodPut && r.Method != http.MethodPatch {
-							t.Errorf("unexpected method %s", r.Method)
-						}
-						writes.Add(1)
-						if outcome == "upstream-failure" {
-							w.WriteHeader(http.StatusBadGateway)
-							return
-						}
-						fmt.Fprint(w, `{"status":"ok"}`)
-					}))
-					defer server.Close()
-					client := cpa.NewClient(server.URL, "management-secret", time.Second, false)
-					locks, refresh := &service.CredentialMutationLocks{}, &credentialStatusRefresherStub{}
-					// 只让用户操作的 UPDATE 失败；放开旧同步前撤下故障，证明它是被版本拦住。
-					var failLocal atomic.Bool
-					if outcome == "local-failure" {
-						failLocal.Store(true)
-						if err := db.Callback().Update().Before("gorm:update").Register("test:fail_mutation_persist", func(tx *gorm.DB) {
-							if failLocal.Load() {
-								tx.AddError(errors.New("local persistence unavailable"))
-							}
-						}); err != nil {
-							t.Fatal(err)
-						}
-					}
-					var err error
+				}
+				statusService := service.NewCredentialStatusService(db, client, refresh, locks, coordinator)
+				priorityService := service.NewCredentialPriorityService(db, client, refresh, locks, coordinator)
+				setDisabled, setPriority := statusService.SetAuthFileDisabled, priorityService.SetAuthFilePriority
+				if provider {
+					setDisabled, setPriority = statusService.SetAIProviderDisabled, priorityService.SetAIProviderPriority
+				}
+				var err error
+				if priority {
+					_, err = setPriority(ctx, "target", 10)
+				} else {
+					_, err = setDisabled(ctx, "target", true)
+				}
+				failLocal.Store(false)
+				if (err == nil) != (outcome == "success") {
+					t.Fatalf("mutation outcome %s: %v", outcome, err)
+				}
+				authType := entities.UsageIdentityAuthTypeAuthFile
+				if provider {
+					authType = entities.UsageIdentityAuthTypeAIProvider
+				}
+				read := func() entities.UsageIdentity {
+					return loadMetadataIdentityMap(t, db)[metadataIdentityKey(authType, "target")]
+				}
+				before := read()
+				if outcome == "success" {
 					if priority {
-						mutation := service.NewCredentialPriorityService(db, client, refresh, locks, coordinator)
-						if provider {
-							_, err = mutation.SetAIProviderPriority(ctx, "target", 10)
-						} else {
-							_, err = mutation.SetAuthFilePriority(ctx, "target", 10)
-						}
-					} else {
-						mutation := service.NewCredentialStatusService(db, client, refresh, locks, coordinator)
-						if provider {
-							_, err = mutation.SetAIProviderDisabled(ctx, "target", true)
-						} else {
-							_, err = mutation.SetAuthFileDisabled(ctx, "target", true)
-						}
+						requirePriority(t, before.Priority, 10)
+					} else if before.Disabled == nil || !*before.Disabled {
+						t.Fatalf("saved disabled state was lost: %+v", before)
 					}
-					failLocal.Store(false)
-					if (err == nil) != (outcome == "success") {
-						t.Fatalf("mutation outcome %s: %v", outcome, err)
+				}
+				if err := releaseSnapshot(); err != nil {
+					t.Fatal(err)
+				}
+				after := read()
+				if outcome == "upstream-failure" {
+					if after.Name != "stale-snapshot" {
+						t.Fatalf("failed remote mutation invalidated a usable snapshot: %+v", after)
 					}
-					authType := entities.UsageIdentityAuthTypeAuthFile
-					if provider {
-						authType = entities.UsageIdentityAuthTypeAIProvider
-					}
-					read := func() entities.UsageIdentity {
-						return loadMetadataIdentityMap(t, db)[metadataIdentityKey(authType, "target")]
-					}
-					assertSaved := func(row entities.UsageIdentity) {
-						t.Helper()
-						if priority {
-							requirePriority(t, row.Priority, 10)
-						} else if row.Disabled == nil || !*row.Disabled {
-							t.Fatalf("saved disabled state was lost: %+v", row)
-						}
-					}
-					before := read()
-					if outcome == "success" {
-						assertSaved(before)
-					}
-					if err := releaseSnapshot(); err != nil {
-						t.Fatal(err)
-					}
-					after := read()
-					if outcome == "upstream-failure" {
-						if after.Name != "stale-snapshot" {
-							t.Fatalf("failed remote mutation invalidated a usable snapshot: %+v", after)
-						}
-					} else if !reflect.DeepEqual(before, after) {
-						t.Fatalf("superseded snapshot changed local state: before=%+v after=%+v", before, after)
-					}
-					if outcome == "success" {
-						assertSaved(after)
-					}
-					var key entities.CPAAPIKey
-					if err := db.Where("api_key = ?", "independent-key").First(&key).Error; err != nil {
-						t.Fatalf("independent management key sync was skipped: %v", err)
-					}
-					wantRefresh := 1
-					if outcome == "upstream-failure" {
-						wantRefresh = 0
-					}
-					if writes.Load() != 1 || refresh.count() != wantRefresh {
-						t.Fatalf("writes=%d refresh=%d", writes.Load(), refresh.count())
-					}
-					// 后续正常一轮仍可落下新快照，不留下持续跳过状态。
-					delete(fetcher.standardHooks, "codex")
-					if provider {
-						fetcher.standardResults["codex"].Payload[0].Priority = metadataIntPointer(10)
-						fetcher.standardResults["codex"].Payload[0].Disabled = metadataBoolPointer(true)
-					} else {
-						fetcher.authFilesResult.Payload.Files[0].Priority = metadataIntPointer(10)
-						fetcher.authFilesResult.Payload.Files[0].Disabled = metadataBoolPointer(true)
-					}
-					if err := syncer.SyncMetadata(ctx); err != nil {
-						t.Fatal(err)
-					}
-					fresh := read()
-					requirePriority(t, fresh.Priority, 10)
-					if fresh.Disabled == nil || !*fresh.Disabled {
-						t.Fatalf("fresh sync did not persist disabled state: %+v", fresh)
-					}
-				})
-			}
+				} else if !reflect.DeepEqual(before, after) {
+					t.Fatalf("superseded snapshot changed local state: before=%+v after=%+v", before, after)
+				}
+				var key entities.CPAAPIKey
+				if err := db.Where("api_key = ?", "independent-key").First(&key).Error; err != nil {
+					t.Fatalf("independent management key sync was skipped: %v", err)
+				}
+				wantRefresh := 1
+				if outcome == "upstream-failure" {
+					wantRefresh = 0
+				}
+				if writes.Load() != 1 || refresh.count() != wantRefresh {
+					t.Fatalf("writes=%d refresh=%d", writes.Load(), refresh.count())
+				}
+				// 后续正常一轮仍可落下新快照，不留下持续跳过状态。
+				delete(fetcher.standardHooks, "codex")
+				if provider {
+					fetcher.standardResults["codex"].Payload[0].Priority = metadataIntPointer(10)
+					fetcher.standardResults["codex"].Payload[0].Disabled = metadataBoolPointer(true)
+				} else {
+					fetcher.authFilesResult.Payload.Files[0].Priority = metadataIntPointer(10)
+					fetcher.authFilesResult.Payload.Files[0].Disabled = metadataBoolPointer(true)
+				}
+				if err := syncer.SyncMetadata(ctx); err != nil {
+					t.Fatal(err)
+				}
+				fresh := read()
+				requirePriority(t, fresh.Priority, 10)
+				if fresh.Disabled == nil || !*fresh.Disabled {
+					t.Fatalf("fresh sync did not persist disabled state: %+v", fresh)
+				}
+			})
 		}
 	}
 }
@@ -225,8 +221,9 @@ func TestMetadataSnapshotDoesNotRevertOpenAIGroupPriority(t *testing.T) {
 	if err := syncer.SyncMetadata(ctx); err != nil {
 		t.Fatal(err)
 	}
+	fresh := loadMetadataIdentityMap(t, db)
 	for _, index := range []string{"target", "sibling"} {
-		row := loadMetadataIdentityMap(t, db)[metadataIdentityKey(entities.UsageIdentityAuthTypeAIProvider, index)]
+		row := fresh[metadataIdentityKey(entities.UsageIdentityAuthTypeAIProvider, index)]
 		if row.Name != "fresh-group" {
 			t.Fatalf("fresh group did not persist: %+v", row)
 		}
