@@ -25,6 +25,10 @@ describe.each([['en', 0], ['zh', 1], ['zh-TW', 2]] as const)('service tier displ
     expect(formatServiceTier(' Priority ', t)).toBe(fast);
     expect(formatServiceTierDetail(' Priority ', t)).toBe(`${fast} (Priority)`);
   });
+});
+
+describe('language-independent service tier values', () => {
+  const t = i18n.getFixedT('en');
 
   it.each([undefined, null, '', '  '])('shows missing value %j as a dash without parentheses', (raw) => {
     expect(formatServiceTier(raw, t)).toBe('-');

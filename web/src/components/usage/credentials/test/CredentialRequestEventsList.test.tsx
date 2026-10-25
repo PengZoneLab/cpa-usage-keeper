@@ -410,10 +410,6 @@ describe('CredentialRequestEventsList', () => {
 
   it.each([
     ['CustomTier', 'CustomTier (CustomTier)'],
-    ['auto', 'usage_stats.speed_mode_auto (auto)'],
-    ['default', 'usage_stats.speed_mode_standard (default)'],
-    ['standard', 'usage_stats.speed_mode_standard (standard)'],
-    ['fast', 'usage_stats.speed_mode_fast (fast)'],
     ['ultrafast', 'usage_stats.speed_mode_ultrafast (ultrafast)'],
     ['', '-'], [undefined, '-'],
   ])(
