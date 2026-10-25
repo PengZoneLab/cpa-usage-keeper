@@ -17,6 +17,7 @@ import { useThemeStore } from '@/stores'
 import { formatCompactNumber, formatUsd } from '@/utils/usage'
 import { buildUsageChartTooltipStyle, getUsageChartTheme, toUsageChartGradientFill, USAGE_CHART_REQUESTS_LINE_COLOR, type UsageChartGradientColor } from '@/utils/usage/chartConfig'
 import { quotaRemainingStatus } from './credentialViewModels'
+import { createQuotaHistoryDateTimeFormatter, formatQuotaSummaryPercentage, formatQuotaSummaryRequests } from './quotaHistoryFormatters'
 import { createQuotaHistoryTimeFormatter, type QuotaHistoryTimeFormatter } from './quotaHistoryTimeLabels'
 import styles from './CodexQuotaHistoryPanel.module.scss'
 
@@ -185,7 +186,7 @@ function QuotaHistoryPanel({ authIndex, onAuthRequired }: CodexQuotaHistoryPanel
 
   const locale = i18n?.resolvedLanguage || i18n?.language
   const formatTime = useMemo(
-    () => createQuotaHistoryTimeFormatter(history?.cycles ?? [], (value) => formatDateTime(value, locale)),
+    () => createQuotaHistoryTimeFormatter(history?.cycles ?? [], createQuotaHistoryDateTimeFormatter(locale)),
     [history, locale],
   )
   // 周期状态和新旧顺序沿用后端；图表只读取所选角色中稳定 id 对应的周期。
@@ -538,17 +539,6 @@ function subtractQuotaMetrics(
     costAvailable: fullEstimate.costAvailable && usage.costAvailable,
     percentage: fullEstimate.tokens > 0 ? (unusedTokens / fullEstimate.tokens) * 100 : 0,
   }
-}
-
-function formatQuotaSummaryRequests(value: number): string {
-  if (Math.abs(value) >= 1_000) return formatCompactNumber(value)
-  return new Intl.NumberFormat(undefined, {
-    maximumFractionDigits: Math.abs(value) >= 100 ? 0 : Math.abs(value) >= 10 ? 1 : 2,
-  }).format(value)
-}
-
-function formatQuotaSummaryPercentage(value: number): string {
-  return `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(value)}%`
 }
 
 function CycleAccessibleSummary({
@@ -1019,29 +1009,4 @@ function formatWindowDuration(seconds: number): string {
   if (seconds % 86400 === 0) return `${seconds / 86400}d`
   if (seconds % 3600 === 0) return `${seconds / 3600}h`
   return `${seconds}s`
-}
-
-function formatDateTime(value: string, locale?: string): string {
-  const date = new Date(value)
-  if (!Number.isFinite(date.getTime())) return value || '—'
-  // API 时间已经使用项目 TZ；把原墙上时间映射到 UTC 仅供 Intl 本地化排版，避免浏览器再次换区。
-  const offsetTime = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/i)
-  const displayDate = offsetTime
-    ? new Date(Date.UTC(
-      Number(offsetTime[1]),
-      Number(offsetTime[2]) - 1,
-      Number(offsetTime[3]),
-      Number(offsetTime[4]),
-      Number(offsetTime[5]),
-      Number(offsetTime[6]),
-    ))
-    : date
-  return new Intl.DateTimeFormat(locale, {
-    month: 'short',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-    ...(offsetTime ? { timeZone: 'UTC' } : {}),
-  }).format(displayDate)
 }
