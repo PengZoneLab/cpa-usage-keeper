@@ -171,9 +171,12 @@ describe('CodexQuotaHistoryPanel', () => {
     await act(async () => root.render(<CodexQuotaHistoryPanel authIndex={authIndex} />))
   }
 
-  const selectCycle = async (id: number) => {
-    await act(async () => container.querySelector<HTMLButtonElement>(`[data-codex-quota-cycle-id="${id}"] [data-codex-quota-cycle-select]`)!.click())
-  }
+  const cycleCard = (id: number) => container.querySelector<HTMLElement>(`[data-codex-quota-cycle-id="${id}"]`)!
+  const detailButton = (id: number) => cycleCard(id).querySelector<HTMLButtonElement>('button[aria-expanded]')!
+  const metricText = (summary: Element | null | undefined, metric: string) =>
+    summary?.querySelector(`[data-codex-quota-summary-metric="${metric}"]`)?.textContent
+  const click = async (element: HTMLElement) => { await act(async () => element.click()) }
+  const selectCycle = (id: number) => click(cycleCard(id).querySelector<HTMLButtonElement>('[data-codex-quota-cycle-select]')!)
 
   const windowButton = (role: 'primary' | 'secondary') =>
     container.querySelectorAll<HTMLButtonElement>('[aria-label="usage_stats.credentials_quota_history_window_selector"] button')[role === 'primary' ? 0 : 1]!
@@ -203,7 +206,7 @@ describe('CodexQuotaHistoryPanel', () => {
 
     let reject!: (error: Error) => void
     fetchCodexQuotaHistory.mockReturnValueOnce(new Promise((_, fail) => { reject = fail }))
-    await act(async () => windowButton('primary').click())
+    await click(windowButton('primary'))
     update()
     expect(reset).toHaveBeenCalledTimes(2)
     await act(async () => reject(new Error('refresh failed')))
@@ -211,7 +214,7 @@ describe('CodexQuotaHistoryPanel', () => {
     expect(reset).toHaveBeenCalledTimes(2)
 
     fetchCodexQuotaHistory.mockResolvedValueOnce(structuredClone(initial))
-    await act(async () => windowButton('primary').click())
+    await click(windowButton('primary'))
     update()
     expect(reset).toHaveBeenCalledTimes(3)
     expect(container.querySelector('[data-codex-quota-chart-cycle-id="1"]')).not.toBeNull()
@@ -226,15 +229,15 @@ describe('CodexQuotaHistoryPanel', () => {
     expect(container.querySelectorAll('[data-testid="quota-efficiency-chart"]')).toHaveLength(1)
     expect(container.querySelector('[data-codex-quota-chart-summary]')).toBeNull()
     expect(container.textContent).not.toContain('usage_stats.credentials_quota_history_records_title')
-    const disclosure = container.querySelector<HTMLButtonElement>('[data-codex-quota-cycle-id="2"] button[aria-expanded]')!
+    const disclosure = detailButton(2)
     expect(disclosure.textContent).toBe('usage_stats.credentials_quota_history_expand_details:{"count":2}')
     expect(disclosure.getAttribute('aria-expanded')).toBe('false')
-    await act(async () => disclosure.click())
+    await click(disclosure)
     expect(disclosure.getAttribute('aria-expanded')).toBe('true')
     expect(document.getElementById(disclosure.getAttribute('aria-controls')!)?.querySelectorAll('[data-codex-quota-transition]')).toHaveLength(2)
-    await act(async () => disclosure.click())
+    await click(disclosure)
     expect(container.querySelectorAll('[data-codex-quota-transition]')).toHaveLength(0)
-    expect(container.querySelector('[data-codex-quota-cycle-id="2"] [data-codex-quota-cycle-select]')?.getAttribute('aria-pressed')).toBe('true')
+    expect(cycleCard(2).querySelector('[data-codex-quota-cycle-select]')?.getAttribute('aria-pressed')).toBe('true')
     expect(fetchCodexQuotaHistory).toHaveBeenCalledTimes(1)
   })
 
@@ -259,21 +262,21 @@ describe('CodexQuotaHistoryPanel', () => {
     expect(latestChartData?.labels).toEqual(['93% → 92%'])
     expect(latestChartData?.datasets[1].data).toEqual([null])
     expect(container.querySelectorAll('[data-testid="quota-efficiency-chart"]')).toHaveLength(1)
-    expect(container.querySelector('[data-codex-quota-cycle-id="1"] [data-codex-quota-cycle-select]')?.getAttribute('aria-pressed')).toBe('true')
+    expect(cycleCard(1).querySelector('[data-codex-quota-cycle-select]')?.getAttribute('aria-pressed')).toBe('true')
     expect(fetchCodexQuotaHistory).toHaveBeenCalledTimes(1)
   })
 
   it('selects a cycle when clicking its summary and keeps disclosure and deletion independent', async () => {
     await renderPanel()
-    const completedSummary = container.querySelector<HTMLElement>('[data-codex-quota-cycle-id="1"] [data-codex-quota-cycle-summary]')!
-    await act(async () => completedSummary.click())
+    const completedSummary = cycleCard(1).querySelector<HTMLElement>('[data-codex-quota-cycle-summary]')!
+    await click(completedSummary)
     expect(container.querySelector('[data-codex-quota-chart-cycle-id="1"]')).not.toBeNull()
-    const disclosure = container.querySelector<HTMLButtonElement>('[data-codex-quota-cycle-id="2"] button[aria-expanded]')!
-    await act(async () => disclosure.click())
+    const disclosure = detailButton(2)
+    await click(disclosure)
     expect(container.querySelector('[data-codex-quota-chart-cycle-id="1"]')).not.toBeNull()
     await openDelete(2)
     expect(container.querySelector('[data-codex-quota-chart-cycle-id="1"]')).not.toBeNull()
-    await act(async () => modalButton('common.cancel').click())
+    await click(modalButton('common.cancel'))
     expect(container.querySelector('button button')).toBeNull()
   })
 
@@ -286,7 +289,7 @@ describe('CodexQuotaHistoryPanel', () => {
     expect(scroll).not.toHaveBeenCalled()
     const returnButton = [...container.querySelectorAll<HTMLButtonElement>('[data-codex-quota-cycle-id="1"] button')]
       .find((button) => button.textContent === 'usage_stats.credentials_quota_history_return_to_chart')!
-    await act(async () => returnButton.click())
+    await click(returnButton)
     expect(scroll).toHaveBeenCalledTimes(1)
     expect(document.activeElement).toBe(chart)
     expect(container.querySelector('[data-codex-quota-chart-cycle-id="1"]')).not.toBeNull()
@@ -309,11 +312,11 @@ describe('CodexQuotaHistoryPanel', () => {
     container.scrollTo = scroll
     const returnButton = [...container.querySelectorAll<HTMLButtonElement>('[data-codex-quota-cycle-id="2"] button')]
       .find((button) => button.textContent === 'usage_stats.credentials_quota_history_return_to_chart')!
-    await act(async () => returnButton.click())
+    await click(returnButton)
     expect(scroll).toHaveBeenCalledWith({ top: 124, behavior: 'smooth' })
     expect(document.activeElement).toBe(chart)
     vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList)
-    await act(async () => returnButton.click())
+    await click(returnButton)
     expect(scroll).toHaveBeenLastCalledWith({ top: 124, behavior: 'instant' })
     expect(document.activeElement).toBe(chart)
   })
@@ -324,12 +327,12 @@ describe('CodexQuotaHistoryPanel', () => {
     fetchCodexQuotaHistory.mockResolvedValueOnce(initial)
     await renderPanel()
     await selectCycle(1)
-    await act(async () => container.querySelector<HTMLButtonElement>('[data-codex-quota-cycle-id="1"] button[aria-expanded]')!.click())
-    const card = () => container.querySelector('[data-codex-quota-cycle-id="1"]')!
+    await click(detailButton(1))
+    const card = () => cycleCard(1)
     const before = card().textContent
     let fail!: (error: Error) => void
     fetchCodexQuotaHistory.mockReturnValueOnce(new Promise((_, reject) => { fail = reject }))
-    await act(async () => windowButton('primary').click())
+    await click(windowButton('primary'))
     const deleteButtons = () => [...container.querySelectorAll<HTMLButtonElement>('[data-codex-quota-cycle-id] button[aria-label="usage_stats.credentials_quota_history_delete_title"]')]
     expect(deleteButtons().every((button) => button.disabled)).toBe(true)
     expect(card().querySelector('button[aria-expanded]')?.getAttribute('aria-expanded')).toBe('true')
@@ -369,7 +372,7 @@ describe('CodexQuotaHistoryPanel', () => {
     ])
     await openDelete(1)
     expect(document.querySelector('[role="dialog"]')?.textContent).toContain('usage_stats.credentials_quota_history_percent_summary:{"percent":92,"count":9}')
-    await act(async () => modalButton('common.cancel').click())
+    await click(modalButton('common.cancel'))
     expect(card().querySelector('button[aria-expanded]')?.getAttribute('aria-expanded')).toBe('true')
     expect(fetchCodexQuotaHistory).toHaveBeenCalledTimes(3)
   })
@@ -379,8 +382,8 @@ describe('CodexQuotaHistoryPanel', () => {
     initial.cycles[1].transitions = [completedTransition()]
     fetchCodexQuotaHistory.mockResolvedValueOnce(initial)
     await renderPanel()
-    await act(async () => container.querySelector<HTMLButtonElement>('[data-codex-quota-cycle-id="1"] button[aria-expanded]')!.click())
-    const card = () => container.querySelector('[data-codex-quota-cycle-id="1"]')!
+    await click(detailButton(1))
+    const card = () => cycleCard(1)
     const english = card().textContent
     const lightLine = latestChartData?.datasets[2].borderColor
     await act(async () => useThemeStore.setState({ theme: 'dark', resolvedTheme: 'dark' }))
@@ -406,12 +409,12 @@ describe('CodexQuotaHistoryPanel', () => {
     const refreshed = cloneResponse()
     refreshed.cycles[1].transitions = [completedTransition()]
     fetchCodexQuotaHistory.mockResolvedValueOnce(refreshed)
-    await act(async () => windowButton('primary').click())
+    await click(windowButton('primary'))
     expect(container.querySelector('[data-codex-quota-chart-cycle-id="1"]')).not.toBeNull()
     expect(latestChartData?.labels).toEqual(['93% → 92%'])
     await openDelete(1)
     fetchCodexQuotaHistory.mockResolvedValueOnce({ ...refreshed, cycles: [refreshed.cycles[0]] })
-    await act(async () => modalButton('common.delete').click())
+    await click(modalButton('common.delete'))
     expect(container.querySelector('[data-codex-quota-chart-cycle-id="2"]')).not.toBeNull()
   })
 
@@ -420,23 +423,23 @@ describe('CodexQuotaHistoryPanel', () => {
     await selectCycle(1)
     await openDelete(2)
     fetchCodexQuotaHistory.mockResolvedValueOnce({ ...response, cycles: [response.cycles[1]] })
-    await act(async () => modalButton('common.delete').click())
+    await click(modalButton('common.delete'))
     expect(container.querySelector('[data-codex-quota-chart-cycle-id="1"]')).not.toBeNull()
   })
 
   it('resets cycle selection and expanded details on role and account changes even when ids overlap', async () => {
     await renderPanel()
     await selectCycle(1)
-    await act(async () => container.querySelector<HTMLButtonElement>('[data-codex-quota-cycle-id="1"] button[aria-expanded]')!.click())
+    await click(detailButton(1))
     const secondary = cloneResponse()
     secondary.selected_window = secondary.windows[1]
     fetchCodexQuotaHistory.mockResolvedValueOnce(secondary)
-    await act(async () => windowButton('secondary').click())
+    await click(windowButton('secondary'))
     expect(container.querySelector('[data-codex-quota-chart-cycle-id="2"]')).not.toBeNull()
     expect(container.querySelectorAll('button[aria-expanded="true"]')).toHaveLength(0)
     await selectCycle(1)
     fetchCodexQuotaHistory.mockResolvedValueOnce(structuredClone(secondary))
-    await act(async () => windowButton('secondary').click())
+    await click(windowButton('secondary'))
     expect(container.querySelector('[data-codex-quota-chart-cycle-id="1"]')).not.toBeNull()
     expect(fetchCodexQuotaHistory).toHaveBeenLastCalledWith('codex-auth', { windowRole: 'secondary' }, expect.any(AbortSignal))
     await renderPanel('other-auth')
@@ -458,9 +461,7 @@ describe('CodexQuotaHistoryPanel', () => {
     expect(chart.querySelector('[data-codex-quota-cost-warning]')).not.toBeNull()
   })
 
-  const openDelete = async (cycleId = 2) => {
-    await act(async () => (container.querySelector(`[data-codex-quota-cycle-id="${cycleId}"] button[aria-label="usage_stats.credentials_quota_history_delete_title"]`) as HTMLButtonElement).click())
-  }
+  const openDelete = (cycleId = 2) => click(cycleCard(cycleId).querySelector<HTMLButtonElement>('button[aria-label="usage_stats.credentials_quota_history_delete_title"]')!)
   const modalButton = (label: string) => Array.from(document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')).find((button) => button.textContent === label)!
 
   const createLayoutChart = () => {
@@ -491,7 +492,7 @@ describe('CodexQuotaHistoryPanel', () => {
       ...next.cycles[0].transitions[0], from_remaining_percent: 100, to_remaining_percent: 5, percentage_points: 95, is_direct: false,
     }]
     fetchCodexQuotaHistory.mockResolvedValueOnce(next)
-    await act(async () => root.render(<CodexQuotaHistoryPanel authIndex="auth-1" />))
+    await renderPanel('auth-1')
     const chart = createLayoutChart()
     try {
       for (const [width, count] of [[840, 8], [340, 4], [254, 3], [840, 8]]) {
@@ -513,7 +514,7 @@ describe('CodexQuotaHistoryPanel', () => {
       ...next.cycles[0].transitions[0], from_remaining_percent: 76, to_remaining_percent: 76 - count, percentage_points: count,
     }]
     fetchCodexQuotaHistory.mockResolvedValueOnce(next)
-    await act(async () => root.render(<CodexQuotaHistoryPanel authIndex="auth-1" />))
+    await renderPanel('auth-1')
     const chart = createLayoutChart()
     try {
       expect(chart.scales.x.ticks.map((tick) => tick.label)).toEqual(latestChartData?.labels)
@@ -528,7 +529,7 @@ describe('CodexQuotaHistoryPanel', () => {
     const next = cloneResponse()
     next.cycles[0].last_remaining_percent = percent
     fetchCodexQuotaHistory.mockResolvedValueOnce(next)
-    await act(async () => root.render(<CodexQuotaHistoryPanel authIndex="auth-1" />))
+    await renderPanel('auth-1')
 
     const remaining = container.querySelector('[data-codex-quota-chart-cycle-id="2"] header dl')
     expect(remaining?.querySelector('dt')?.textContent).toBe('usage_stats.credentials_quota_history_current_remaining')
@@ -540,32 +541,32 @@ describe('CodexQuotaHistoryPanel', () => {
     const next = cloneResponse()
     next.cycles = [next.cycles[1]]
     fetchCodexQuotaHistory.mockResolvedValueOnce(next)
-    await act(async () => root.render(<CodexQuotaHistoryPanel authIndex="auth-1" />))
+    await renderPanel('auth-1')
     const remaining = container.querySelector('[data-codex-quota-chart-cycle-id="1"] header dl')
     expect(remaining?.querySelector('dt')?.textContent).toBe('usage_stats.credentials_quota_history_last_remaining')
     expect(remaining?.querySelector('dd')?.textContent).toBe('93%')
   })
 
   it('confirms deletion of a current cycle and reloads history with the selected window', async () => {
-    await act(async () => root.render(<CodexQuotaHistoryPanel authIndex="auth-1" />))
+    await renderPanel('auth-1')
     await openDelete()
     expect(document.querySelector('[role="dialog"]')?.textContent).toContain('usage_stats.credentials_quota_history_delete_description')
     expect(deleteCodexQuotaHistoryCycle).not.toHaveBeenCalled()
     const next = cloneResponse()
     next.cycles = [{ ...next.cycles[1], status: 'current' }]
     fetchCodexQuotaHistory.mockResolvedValueOnce(next)
-    await act(async () => modalButton('common.delete').click())
+    await click(modalButton('common.delete'))
     expect(deleteCodexQuotaHistoryCycle).toHaveBeenCalledWith('auth-1', 2, expect.any(AbortSignal))
     expect(fetchCodexQuotaHistory).toHaveBeenLastCalledWith('auth-1', { windowRole: 'primary' }, expect.any(AbortSignal))
-    expect(container.querySelector('[data-codex-quota-cycle-id="2"]')).toBeNull()
-    expect(container.querySelector('[data-codex-quota-cycle-id="1"]')?.getAttribute('data-codex-quota-cycle-status')).toBe('current')
+    expect(cycleCard(2)).toBeNull()
+    expect(cycleCard(1)?.getAttribute('data-codex-quota-cycle-status')).toBe('current')
   })
 
   it('distinguishes roles whose remaining histories have the same window title', async () => {
     const sameKind = cloneResponse()
     sameKind.windows[1] = { ...sameKind.windows[0], window_role: 'secondary' }
     fetchCodexQuotaHistory.mockResolvedValueOnce(sameKind)
-    await act(async () => root.render(<CodexQuotaHistoryPanel authIndex="auth-1" />))
+    await renderPanel('auth-1')
     const labels = Array.from(container.querySelectorAll('button[aria-pressed]'), (button) => button.textContent)
     expect(labels[0]).not.toBe(labels[1])
     expect(labels[0]).toContain('Primary')
@@ -573,15 +574,15 @@ describe('CodexQuotaHistoryPanel', () => {
   })
 
   it('can cancel deletion of a completed cycle', async () => {
-    await act(async () => root.render(<CodexQuotaHistoryPanel authIndex="auth-1" />))
+    await renderPanel('auth-1')
     await openDelete(1)
-    await act(async () => modalButton('common.cancel').click())
+    await click(modalButton('common.cancel'))
     expect(deleteCodexQuotaHistoryCycle).not.toHaveBeenCalled()
-    expect(container.querySelector('[data-codex-quota-cycle-id="1"]')).not.toBeNull()
+    expect(cycleCard(1)).not.toBeNull()
   })
 
   it('selects a remaining window after deleting the last cycle of the selected role', async () => {
-    await act(async () => root.render(<CodexQuotaHistoryPanel authIndex="auth-1" />))
+    await renderPanel('auth-1')
     await act(async () => (container.querySelector('button[aria-pressed="true"]') as HTMLButtonElement).click())
     await openDelete()
     const remaining = cloneResponse()
@@ -590,29 +591,29 @@ describe('CodexQuotaHistoryPanel', () => {
     remaining.cycles = [{ ...remaining.cycles[0], id: 3, window_seconds: 18000 }]
     fetchCodexQuotaHistory.mockResolvedValueOnce({ ...remaining, selected_window: null, cycles: [] })
       .mockResolvedValueOnce(remaining)
-    await act(async () => modalButton('common.delete').click())
+    await click(modalButton('common.delete'))
     expect(fetchCodexQuotaHistory).toHaveBeenLastCalledWith('auth-1', {}, expect.any(AbortSignal))
-    expect(container.querySelector('[data-codex-quota-cycle-id="3"]')).not.toBeNull()
+    expect(cycleCard(3)).not.toBeNull()
   })
 
   it('preserves the cycle and allows retry after a delete failure', async () => {
     deleteCodexQuotaHistoryCycle.mockRejectedValueOnce(new Error('delete failed'))
-    await act(async () => root.render(<CodexQuotaHistoryPanel authIndex="auth-1" />))
+    await renderPanel('auth-1')
     await openDelete()
-    await act(async () => modalButton('common.delete').click())
+    await click(modalButton('common.delete'))
     expect(document.querySelector('[role="alert"]')?.textContent).toBe('delete failed')
-    expect(container.querySelector('[data-codex-quota-cycle-id="2"]')).not.toBeNull()
+    expect(cycleCard(2)).not.toBeNull()
     expect(modalButton('common.delete').disabled).toBe(false)
   })
 
   it('ignores completion of a delete after switching accounts', async () => {
     let finish!: () => void
     deleteCodexQuotaHistoryCycle.mockImplementationOnce(() => new Promise<void>((resolve) => { finish = resolve }))
-    await act(async () => root.render(<CodexQuotaHistoryPanel authIndex="auth-1" />))
+    await renderPanel('auth-1')
     await openDelete()
-    await act(async () => modalButton('common.delete').click())
+    await click(modalButton('common.delete'))
     expect(modalButton('common.delete').disabled).toBe(true)
-    await act(async () => root.render(<CodexQuotaHistoryPanel authIndex="auth-2" />))
+    await renderPanel('auth-2')
     const calls = fetchCodexQuotaHistory.mock.calls.length
     await act(async () => finish())
     expect(fetchCodexQuotaHistory.mock.calls).toHaveLength(calls)
@@ -647,24 +648,24 @@ describe('CodexQuotaHistoryPanel', () => {
     expect(document.body.querySelector('[aria-label="usage_stats.credentials_quota_history_metric_selector"]')).toBeNull()
     expect(document.body.querySelector('[data-codex-quota-cycle-id="2"][data-codex-quota-cycle-status="current"]')).not.toBeNull()
     expect(document.body.querySelector('[data-codex-quota-cycle-id="1"][data-codex-quota-cycle-status="completed"]')).not.toBeNull()
-    const chartSummary = document.body.querySelector('[data-codex-quota-cycle-id="2"] [data-codex-quota-cycle-summary]')
+    const chartSummary = cycleCard(2).querySelector('[data-codex-quota-cycle-summary]')
     const usedSummary = chartSummary?.querySelector('[data-codex-quota-summary="used"]')
     const fullEstimateSummary = chartSummary?.querySelector('[data-codex-quota-summary="full-estimate"]')
     const medianSummary = chartSummary?.querySelector('[data-codex-quota-summary="median"]')
     expect([...chartSummary!.querySelectorAll(':scope > [data-codex-quota-summary]')]
       .map((summary) => summary.getAttribute('data-codex-quota-summary'))).toEqual(['median', 'used', 'full-estimate'])
     expect(usedSummary?.textContent).toContain('usage_stats.credentials_quota_history_used')
-    expect(usedSummary?.querySelector('[data-codex-quota-summary-metric="requests"]')?.textContent).toBe('80')
-    expect(usedSummary?.querySelector('[data-codex-quota-summary-metric="tokens"]')?.textContent).toBe('5.00K')
-    expect(usedSummary?.querySelector('[data-codex-quota-summary-metric="cost"]')?.textContent).toBe('$5.00')
+    expect(metricText(usedSummary, 'requests')).toBe('80')
+    expect(metricText(usedSummary, 'tokens')).toBe('5.00K')
+    expect(metricText(usedSummary, 'cost')).toBe('$5.00')
     expect(fullEstimateSummary?.textContent).toContain('usage_stats.credentials_quota_history_full_estimate')
-    expect(fullEstimateSummary?.querySelector('[data-codex-quota-summary-metric="requests"]')?.textContent).toBe('1.75K')
-    expect(fullEstimateSummary?.querySelector('[data-codex-quota-summary-metric="tokens"]')?.textContent).toBe('100.00K')
-    expect(fullEstimateSummary?.querySelector('[data-codex-quota-summary-metric="cost"]')?.textContent).toBe('$100.00')
+    expect(metricText(fullEstimateSummary, 'requests')).toBe('1.75K')
+    expect(metricText(fullEstimateSummary, 'tokens')).toBe('100.00K')
+    expect(metricText(fullEstimateSummary, 'cost')).toBe('$100.00')
     expect(medianSummary?.textContent).toContain('usage_stats.credentials_quota_history_median_per_point')
-    expect(medianSummary?.querySelector('[data-codex-quota-summary-metric="requests"]')?.textContent).toBe('20')
-    expect(medianSummary?.querySelector('[data-codex-quota-summary-metric="tokens"]')?.textContent).toBe('1.00K')
-    expect(medianSummary?.querySelector('[data-codex-quota-summary-metric="cost"]')?.textContent).toBe('$1.00')
+    expect(metricText(medianSummary, 'requests')).toBe('20')
+    expect(metricText(medianSummary, 'tokens')).toBe('1.00K')
+    expect(metricText(medianSummary, 'cost')).toBe('$1.00')
     for (const summary of [usedSummary, fullEstimateSummary, medianSummary]) {
       const metrics = [...summary!.querySelectorAll('[data-codex-quota-summary-metric]')]
       expect(metrics.map((metric) => metric.getAttribute('data-codex-quota-summary-metric'))).toEqual(['requests', 'tokens', 'cost'])
@@ -675,7 +676,7 @@ describe('CodexQuotaHistoryPanel', () => {
       }
     }
     expect(document.body.textContent).toContain('usage_stats.credentials_quota_history_cycle_label')
-    expect(container.querySelector('[data-codex-quota-cycle-id="1"] [data-codex-quota-cycle-select] strong')?.textContent).toContain('Aug 10, 00:00 → Aug 17, 00:00')
+    expect(cycleCard(1).querySelector('[data-codex-quota-cycle-select] strong')?.textContent).toContain('Aug 10, 00:00 → Aug 17, 00:00')
     expect(document.body.textContent).toContain('usage_stats.credentials_quota_history_first_observed')
     const accessibleSummary = document.body.querySelector('[data-codex-quota-accessible-summary]')
     expect(accessibleSummary?.textContent).toContain('90% → 89%')
@@ -707,7 +708,7 @@ describe('CodexQuotaHistoryPanel', () => {
   it('shows three current-cycle summaries and adds estimated unused only to completed cycles', async () => {
     await renderPanel()
 
-    const currentRecord = document.body.querySelector('[data-codex-quota-cycle-id="2"]')
+    const currentRecord = cycleCard(2)
     const currentSummary = currentRecord?.querySelector('[data-codex-quota-cycle-summary]')
     expect([...currentSummary!.querySelectorAll(':scope > [data-codex-quota-summary]')]
       .map((summary) => summary.getAttribute('data-codex-quota-summary'))).toEqual([
@@ -725,7 +726,7 @@ describe('CodexQuotaHistoryPanel', () => {
     expect(currentSummary?.querySelector('[data-codex-quota-summary="full-estimate"] [data-codex-quota-summary-metric="tokens"]')?.textContent).toBe('100.00K')
     expect(currentSummary?.querySelector('[data-codex-quota-summary="estimated-unused"]')).toBeNull()
 
-    const completedRecord = document.body.querySelector('[data-codex-quota-cycle-id="1"]')
+    const completedRecord = cycleCard(1)
     const completedSummary = completedRecord?.querySelector('[data-codex-quota-cycle-summary]')
     expect([...completedSummary!.querySelectorAll(':scope > [data-codex-quota-summary]')]
       .map((summary) => summary.getAttribute('data-codex-quota-summary'))).toEqual([
@@ -752,12 +753,12 @@ describe('CodexQuotaHistoryPanel', () => {
 
     await renderPanel()
 
-    const completedSummary = document.body.querySelector('[data-codex-quota-cycle-id="1"] [data-codex-quota-cycle-summary]')
+    const completedSummary = cycleCard(1).querySelector('[data-codex-quota-cycle-summary]')
     expect(completedSummary?.querySelector('[data-codex-quota-summary="full-estimate"] [data-codex-quota-summary-metric="tokens"]')?.textContent).toBe('100.00K')
     const estimatedUnused = completedSummary?.querySelector('[data-codex-quota-summary="estimated-unused"]')
-    expect(estimatedUnused?.querySelector('[data-codex-quota-summary-metric="percentage"]')?.textContent).toBe('98%')
-    expect(estimatedUnused?.querySelector('[data-codex-quota-summary-metric="tokens"]')?.textContent).toBe('98.00K')
-    expect(estimatedUnused?.querySelector('[data-codex-quota-summary-metric="cost"]')?.textContent).toBe('$98.00')
+    expect(metricText(estimatedUnused, 'percentage')).toBe('98%')
+    expect(metricText(estimatedUnused, 'tokens')).toBe('98.00K')
+    expect(metricText(estimatedUnused, 'cost')).toBe('$98.00')
   })
 
   it('keeps a current 76 percent baseline visible in the cycle list before any transition exists', async () => {
@@ -825,7 +826,7 @@ describe('CodexQuotaHistoryPanel', () => {
     fetchCodexQuotaHistory.mockResolvedValue(missingCycleCostResponse)
     await renderPanel()
 
-    const completedSummary = document.body.querySelector('[data-codex-quota-cycle-id="1"] [data-codex-quota-cycle-summary]')
+    const completedSummary = cycleCard(1).querySelector('[data-codex-quota-cycle-summary]')
     expect(completedSummary?.querySelector('[data-codex-quota-summary="used"] [data-codex-quota-summary-metric="cost"]')?.textContent)
       .toBe('usage_stats.credentials_quota_history_cost_missing')
     expect(completedSummary?.querySelector('[data-codex-quota-summary="full-estimate"]')?.textContent).toContain('—')
@@ -841,7 +842,7 @@ describe('CodexQuotaHistoryPanel', () => {
     fetchCodexQuotaHistory.mockResolvedValue(missingCycleCostResponse)
     await renderPanel()
 
-    const completedSummary = document.body.querySelector('[data-codex-quota-cycle-id="1"] [data-codex-quota-cycle-summary]')
+    const completedSummary = cycleCard(1).querySelector('[data-codex-quota-cycle-summary]')
     expect(completedSummary?.querySelector('[data-codex-quota-summary="full-estimate"] [data-codex-quota-summary-metric="tokens"]')?.textContent)
       .toBe('100.00K')
     expect(completedSummary?.querySelector('[data-codex-quota-summary="full-estimate"] [data-codex-quota-summary-metric="cost"]')?.textContent)
@@ -861,7 +862,7 @@ describe('CodexQuotaHistoryPanel', () => {
     fetchCodexQuotaHistory.mockResolvedValue(unsettledCostResponse)
     await renderPanel()
 
-    const completedSummary = document.body.querySelector('[data-codex-quota-cycle-id="1"] [data-codex-quota-cycle-summary]')
+    const completedSummary = cycleCard(1).querySelector('[data-codex-quota-cycle-summary]')
     expect(completedSummary?.querySelector('[data-codex-quota-summary="full-estimate"] [data-codex-quota-summary-metric="cost"]')?.textContent)
       .toBe('$100.00')
     expect(completedSummary?.querySelector('[data-codex-quota-summary="estimated-unused"] [data-codex-quota-summary-metric="cost"]')?.textContent)
@@ -874,11 +875,7 @@ describe('CodexQuotaHistoryPanel', () => {
     secondary.cycles[0].last_remaining_percent = 19
     fetchCodexQuotaHistory.mockResolvedValueOnce(response).mockResolvedValueOnce(secondary)
     await renderPanel()
-    const secondaryButton = [...document.body.querySelectorAll<HTMLButtonElement>('[aria-label="usage_stats.credentials_quota_history_window_selector"] button')]
-      .find((button) => button.textContent === 'usage_stats.credentials_quota_history_window_five_hour')
-    await act(async () => {
-      secondaryButton!.click()
-    })
+    await click(windowButton('secondary'))
     expect(fetchCodexQuotaHistory).toHaveBeenLastCalledWith(
       'codex-auth',
       { windowRole: 'secondary' },
@@ -896,11 +893,7 @@ describe('CodexQuotaHistoryPanel', () => {
       .mockRejectedValueOnce(new Error('secondary failed'))
       .mockResolvedValueOnce(response)
     await renderPanel()
-    const secondaryButton = [...document.body.querySelectorAll<HTMLButtonElement>('[aria-label="usage_stats.credentials_quota_history_window_selector"] button')]
-      .find((button) => button.textContent === 'usage_stats.credentials_quota_history_window_five_hour')
-    await act(async () => {
-      secondaryButton!.click()
-    })
+    await click(windowButton('secondary'))
     expect(document.body.textContent).toContain('secondary failed')
     const retryButton = document.body.querySelector<HTMLButtonElement>('[role="status"] button')
     await act(async () => {
@@ -921,11 +914,9 @@ describe('CodexQuotaHistoryPanel', () => {
       .mockRejectedValueOnce(new ApiError('busy', 503, 'costs_busy'))
       .mockResolvedValueOnce(response)
     await renderPanel()
-    expect(container.querySelector('[data-codex-quota-cycle-id="2"]')).not.toBeNull()
-    const secondary = [...document.body.querySelectorAll<HTMLButtonElement>('[aria-label="usage_stats.credentials_quota_history_window_selector"] button')]
-      .find((button) => button.textContent === 'usage_stats.credentials_quota_history_window_five_hour')!
-    await act(async () => secondary.click())
-    expect(container.querySelector('[data-codex-quota-cycle-id="2"]')).not.toBeNull()
+    expect(cycleCard(2)).not.toBeNull()
+    await click(windowButton('secondary'))
+    expect(cycleCard(2)).not.toBeNull()
     expect(document.body.textContent).toContain('usage_stats.costs_busy')
     await act(async () => document.body.querySelector<HTMLButtonElement>('[role="status"] button')!.click())
     expect(fetchCodexQuotaHistory).toHaveBeenCalledTimes(3)
@@ -980,7 +971,7 @@ describe('CodexQuotaHistoryPanel', () => {
     fetchCodexQuotaHistory.mockResolvedValueOnce(missing)
     await renderPanel()
     expect(container.querySelector('[data-codex-quota-observed-range]')?.textContent).toContain('"start":"—"')
-    expect(container.querySelector('[data-codex-quota-cycle-id="2"] [data-codex-quota-cycle-select]')?.textContent).toContain('"value":"—"')
+    expect(cycleCard(2).querySelector('[data-codex-quota-cycle-select]')?.textContent).toContain('"value":"—"')
   })
 
   const fallbackResponse = (): CodexQuotaHistoryResponse => {
@@ -1017,7 +1008,7 @@ describe('CodexQuotaHistoryPanel', () => {
     const before = `${wallLabel('01:50')} UTC-07:00`
     const after = `${wallLabel('01:20')} UTC-08:00`
     const chart = () => container.querySelector('[data-codex-quota-chart-cycle-id]')!
-    const selection = () => container.querySelector('[data-codex-quota-cycle-id="2"] [data-codex-quota-cycle-select]')!
+    const selection = () => cycleCard(2).querySelector('[data-codex-quota-cycle-select]')!
     const initialSelection = selection().textContent
     expect(initialSelection).toContain(first)
     expect(chart().querySelector('[data-codex-quota-cycle-range]')?.textContent).toContain(first)
@@ -1026,9 +1017,9 @@ describe('CodexQuotaHistoryPanel', () => {
     expect(chart().querySelector('[data-codex-quota-accessible-summary]')?.textContent).toContain(`${before} → ${after}`)
     const tooltip = latestChartOptions!.plugins!.tooltip!.callbacks!.afterBody as unknown as (items: { dataIndex: number }[]) => string[]
     expect(tooltip([{ dataIndex: 0 }])).toContain(`usage_stats.credentials_quota_history_interval: ${before} → ${after}`)
-    await act(async () => container.querySelector<HTMLButtonElement>('[data-codex-quota-cycle-id="2"] button[aria-expanded]')!.click())
-    expect(container.querySelector('[data-codex-quota-cycle-id="2"] [data-codex-quota-transition]')?.textContent).toContain(before)
-    expect(container.querySelector('[data-codex-quota-cycle-id="2"] [data-codex-quota-transition]')?.textContent).toContain(after)
+    await click(detailButton(2))
+    expect(cycleCard(2).querySelector('[data-codex-quota-transition]')?.textContent).toContain(before)
+    expect(cycleCard(2).querySelector('[data-codex-quota-transition]')?.textContent).toContain(after)
     await selectCycle(1)
     expect(chart().querySelector('[data-codex-quota-cycle-range]')?.textContent).toContain(first)
     await selectCycle(2)
@@ -1036,7 +1027,7 @@ describe('CodexQuotaHistoryPanel', () => {
     await openDelete(2)
     expect(document.querySelector('[role="dialog"]')?.textContent).toContain(first)
     expect(document.querySelector('[role="dialog"]')?.textContent).toContain(`${wallLabel('04:00')} UTC-08:00`)
-    await act(async () => modalButton('common.cancel').click())
+    await click(modalButton('common.cancel'))
     expect(selection().textContent).toBe(initialSelection)
     expect(fetchCodexQuotaHistory).toHaveBeenCalledTimes(1)
   })
@@ -1048,7 +1039,7 @@ describe('CodexQuotaHistoryPanel', () => {
     const normal = cloneResponse()
     normal.selected_window = normal.windows[1]
     fetchCodexQuotaHistory.mockResolvedValueOnce(normal)
-    await act(async () => windowButton('secondary').click())
+    await click(windowButton('secondary'))
     expect(container.textContent).not.toContain('UTC-')
     expect(container.querySelector('[data-codex-quota-cycle-range]')?.textContent).toContain('"start":"Aug 17, 00:00","end":"Aug 24, 00:00"')
     translationState.language = 'zh-CN'
@@ -1057,7 +1048,7 @@ describe('CodexQuotaHistoryPanel', () => {
     expect(container.querySelector('[data-codex-quota-cycle-range]')?.textContent).toContain(start)
     expect(container.textContent).not.toContain('UTC-')
     fetchCodexQuotaHistory.mockResolvedValueOnce(fallbackResponse())
-    await act(async () => windowButton('primary').click())
+    await click(windowButton('primary'))
     expect(container.querySelector('[data-codex-quota-cycle-range]')?.textContent).toContain('UTC-07:00')
     expect(fetchCodexQuotaHistory).toHaveBeenCalledTimes(3)
   })
