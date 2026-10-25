@@ -63,6 +63,7 @@ type SyncService struct {
 	db                    *gorm.DB
 	client                CPAClientFetcher
 	metadataFetcher       MetadataFetcher
+	credentialMetadata    *CredentialMetadataCoordinator
 	baseURL               string
 	now                   func() time.Time
 	recentUsage           RecentUsageEventAppender
@@ -86,11 +87,13 @@ func NewSyncService(db *gorm.DB, cfg config.Config) *SyncService {
 
 // SyncServiceOptions 提供测试和局部调用需要替换的依赖。
 type SyncServiceOptions struct {
-	BaseURL           string
-	Client            CPAClientFetcher
-	MetadataFetcher   MetadataFetcher
-	Now               func() time.Time
-	RecentUsageEvents RecentUsageEventAppender
+	BaseURL         string
+	Client          CPAClientFetcher
+	MetadataFetcher MetadataFetcher
+	// CredentialMetadata 与凭据修改服务共享；未注入时兼容独立同步调用。
+	CredentialMetadata *CredentialMetadataCoordinator
+	Now                func() time.Time
+	RecentUsageEvents  RecentUsageEventAppender
 	// PricingCatalog 与价格保存服务共享，消费批次只从中固定一次只读快照。
 	PricingCatalog        *pricing.Catalog
 	UsageRawRetentionDays int
@@ -115,6 +118,7 @@ func NewSyncServiceWithOptions(db *gorm.DB, opts SyncServiceOptions) *SyncServic
 		db:                    db,
 		client:                opts.Client,
 		metadataFetcher:       metadataFetcher,
+		credentialMetadata:    opts.CredentialMetadata,
 		baseURL:               strings.TrimSpace(opts.BaseURL),
 		now:                   now,
 		recentUsage:           opts.RecentUsageEvents,
