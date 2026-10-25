@@ -196,6 +196,10 @@ describe('CodexQuotaHistoryPanel', () => {
     update()
     expect(reset).toHaveBeenCalledTimes(2)
     expect(fetchCodexQuotaHistory).toHaveBeenCalledTimes(1)
+    await selectCycle(1)
+    update()
+    expect(reset).toHaveBeenCalledTimes(2)
+    expect(container.querySelector('[data-codex-quota-chart-cycle-id="1"]')).not.toBeNull()
 
     let reject!: (error: Error) => void
     fetchCodexQuotaHistory.mockReturnValueOnce(new Promise((_, fail) => { reject = fail }))
@@ -308,6 +312,92 @@ describe('CodexQuotaHistoryPanel', () => {
     await act(async () => returnButton.click())
     expect(scroll).toHaveBeenCalledWith({ top: 124, behavior: 'smooth' })
     expect(document.activeElement).toBe(chart)
+    vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList)
+    await act(async () => returnButton.click())
+    expect(scroll).toHaveBeenLastCalledWith({ top: 124, behavior: 'instant' })
+    expect(document.activeElement).toBe(chart)
+  })
+
+  it('updates same-id summaries, expanded details and tooltips after a stored-cost retry', async () => {
+    const initial = cloneResponse()
+    initial.cycles[1].transitions = [completedTransition()]
+    fetchCodexQuotaHistory.mockResolvedValueOnce(initial)
+    await renderPanel()
+    await selectCycle(1)
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-codex-quota-cycle-id="1"] button[aria-expanded]')!.click())
+    const card = () => container.querySelector('[data-codex-quota-cycle-id="1"]')!
+    const before = card().textContent
+    let fail!: (error: Error) => void
+    fetchCodexQuotaHistory.mockReturnValueOnce(new Promise((_, reject) => { fail = reject }))
+    await act(async () => windowButton('primary').click())
+    const deleteButtons = () => [...container.querySelectorAll<HTMLButtonElement>('[data-codex-quota-cycle-id] button[aria-label="usage_stats.credentials_quota_history_delete_title"]')]
+    expect(deleteButtons().every((button) => button.disabled)).toBe(true)
+    expect(card().querySelector('button[aria-expanded]')?.getAttribute('aria-expanded')).toBe('true')
+    await act(async () => fail(new ApiError('busy', 503, 'costs_busy')))
+    expect(card().textContent).toBe(before)
+    expect(deleteButtons().every((button) => !button.disabled)).toBe(true)
+    expect(container.querySelector('[role="status"]')?.textContent).toContain('usage_stats.costs_busy')
+
+    const updated = structuredClone(initial)
+    const cycle = updated.cycles[1]
+    cycle.usage = usage(6400, 6.4, false, 24)
+    cycle.first_observed_at = '2026-08-10T04:00:00Z'
+    cycle.last_observed_at = '2026-08-16T23:55:00Z'
+    cycle.last_remaining_percent = 92
+    cycle.observation_count = 9
+    cycle.transitions[0] = {
+      ...cycle.transitions[0], interval_started_at: cycle.first_observed_at, interval_ended_at: cycle.last_observed_at,
+      usage: usage(2400, 7.25, true, 14), tokens_per_point: 2400, cost_per_point: 7.25,
+    }
+    fetchCodexQuotaHistory.mockResolvedValueOnce(updated)
+    await act(async () => container.querySelector<HTMLButtonElement>('[role="status"] button')!.click())
+    expect(fetchCodexQuotaHistory).toHaveBeenLastCalledWith('codex-auth', { windowRole: 'primary' }, expect.any(AbortSignal))
+    expect(container.querySelector('[data-codex-quota-chart-cycle-id="1"]')).not.toBeNull()
+    expect(card().querySelector('button[aria-expanded]')?.getAttribute('aria-expanded')).toBe('true')
+    const used = card().querySelector('[data-codex-quota-summary="used"]')!
+    expect(used.querySelector('[data-codex-quota-summary-metric="requests"]')?.textContent).toBe('24')
+    expect(used.querySelector('[data-codex-quota-summary-metric="tokens"]')?.textContent).toBe('6.40K')
+    expect(used.querySelector('[data-codex-quota-summary-metric="cost"]')?.textContent).toBe('usage_stats.credentials_quota_history_cost_missing')
+    expect(card().querySelector('[data-codex-quota-transition]')?.textContent).toContain('Aug 10, 04:00')
+    expect(card().querySelector('[data-codex-quota-transition]')?.textContent).toContain('$7.25/1%')
+    expect(latestChartData?.datasets[0].data).toEqual([2400])
+    expect(latestChartData?.datasets[1].data).toEqual([7.25])
+    const label = latestChartOptions?.plugins?.tooltip?.callbacks?.label as (context: { dataIndex: number; datasetIndex: number }) => string[]
+    expect(label({ dataIndex: 0, datasetIndex: 0 })).toEqual([
+      'usage_stats.credentials_quota_history_tokens_per_point: 2.40K',
+      'usage_stats.credentials_quota_history_cost_per_point: $7.25',
+    ])
+    await openDelete(1)
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain('usage_stats.credentials_quota_history_percent_summary:{"percent":92,"count":9}')
+    await act(async () => modalButton('common.cancel').click())
+    expect(card().querySelector('button[aria-expanded]')?.getAttribute('aria-expanded')).toBe('true')
+    expect(fetchCodexQuotaHistory).toHaveBeenCalledTimes(3)
+  })
+
+  it('updates an expanded unselected card on language changes and preserves it through theme changes', async () => {
+    const initial = cloneResponse()
+    initial.cycles[1].transitions = [completedTransition()]
+    fetchCodexQuotaHistory.mockResolvedValueOnce(initial)
+    await renderPanel()
+    await act(async () => container.querySelector<HTMLButtonElement>('[data-codex-quota-cycle-id="1"] button[aria-expanded]')!.click())
+    const card = () => container.querySelector('[data-codex-quota-cycle-id="1"]')!
+    const english = card().textContent
+    const lightLine = latestChartData?.datasets[2].borderColor
+    await act(async () => useThemeStore.setState({ theme: 'dark', resolvedTheme: 'dark' }))
+    expect(latestChartData?.datasets[2].borderColor).not.toEqual(lightLine)
+    expect(card().textContent).toBe(english)
+    expect(card().querySelector('button[aria-expanded]')?.getAttribute('aria-expanded')).toBe('true')
+    translationState.language = 'zh-CN'
+    await renderPanel()
+    const first = new Intl.DateTimeFormat('zh-CN', { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'UTC' }).format(new Date(initial.cycles[1].first_observed_at))
+    expect(card().querySelector('[data-codex-quota-transition]')?.textContent).toContain(first)
+    expect(card().textContent).not.toBe(english)
+    expect(card().querySelector('button[aria-expanded]')?.getAttribute('aria-expanded')).toBe('true')
+    translationState.language = 'en-US'
+    await renderPanel()
+    expect(card().textContent).toBe(english)
+    expect(container.querySelector('[data-codex-quota-chart-cycle-id="2"]')).not.toBeNull()
+    expect(fetchCodexQuotaHistory).toHaveBeenCalledTimes(1)
   })
 
   it('retains a valid historical selection on refresh and falls back after its deletion', async () => {
@@ -345,6 +435,10 @@ describe('CodexQuotaHistoryPanel', () => {
     expect(container.querySelector('[data-codex-quota-chart-cycle-id="2"]')).not.toBeNull()
     expect(container.querySelectorAll('button[aria-expanded="true"]')).toHaveLength(0)
     await selectCycle(1)
+    fetchCodexQuotaHistory.mockResolvedValueOnce(structuredClone(secondary))
+    await act(async () => windowButton('secondary').click())
+    expect(container.querySelector('[data-codex-quota-chart-cycle-id="1"]')).not.toBeNull()
+    expect(fetchCodexQuotaHistory).toHaveBeenLastCalledWith('codex-auth', { windowRole: 'secondary' }, expect.any(AbortSignal))
     await renderPanel('other-auth')
     expect(container.querySelector('[data-codex-quota-chart-cycle-id="2"]')).not.toBeNull()
   })

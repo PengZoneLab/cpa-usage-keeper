@@ -1,5 +1,5 @@
 import { ChartLifecycleProvider, useChartRefresh } from '../charts/chartLifecycle'
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react'
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { CategoryScaleOptions, ChartData, ChartOptions } from 'chart.js'
 import { Chart } from '../charts/UsageChart'
@@ -184,6 +184,32 @@ function QuotaHistoryPanel({ authIndex, onAuthRequired }: CodexQuotaHistoryPanel
     setDeleteError('')
   }
 
+  const selectedWindowRole = history?.selected_window?.window_role ?? null
+  const selectCycle = useCallback((cycleId: number) => {
+    setSelection((previous) => previous.windowRole === selectedWindowRole && previous.cycleId === cycleId
+      ? previous : { windowRole: selectedWindowRole, cycleId })
+  }, [selectedWindowRole])
+  const openDelete = useCallback((cycle: CodexQuotaHistoryCycle) => {
+    setDeleteError('')
+    setDeleteTarget(cycle)
+  }, [])
+  const returnToChart = useCallback(() => {
+    const chart = chartRef.current
+    if (!chart) return
+    const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'
+    const body = chart.closest<HTMLElement>('.modal-body')
+    const tabs = body?.querySelector<HTMLElement>('[data-credential-detail-tab-bar]')
+    // 按真实抽屉标签栏的实际高度定位，只调整本次返回，不影响其他面板的滚动。
+    if (body && tabs) {
+      const top = body.scrollTop + chart.getBoundingClientRect().top - body.getBoundingClientRect().top
+        - body.clientTop - tabs.getBoundingClientRect().height - 12
+      body.scrollTo({ top: Math.max(0, top), behavior })
+    } else {
+      chart.scrollIntoView({ block: 'start', behavior })
+    }
+    chart.focus({ preventScroll: true })
+  }, [])
+
   const locale = i18n?.resolvedLanguage || i18n?.language
   const formatTime = useMemo(
     () => createQuotaHistoryTimeFormatter(history?.cycles ?? [], createQuotaHistoryDateTimeFormatter(locale)),
@@ -243,25 +269,10 @@ function QuotaHistoryPanel({ authIndex, onAuthRequired }: CodexQuotaHistoryPanel
           <CyclesList key={history.selected_window?.window_role ?? 'empty'}
             cycles={history.cycles} formatTime={formatTime} summaries={cycleSummaries}
             selectedCycleId={selectedCycle?.id ?? null}
-            onSelect={(cycleId) => setSelection({ windowRole: history.selected_window?.window_role ?? null, cycleId })}
-            onReturnToChart={() => {
-              const chart = chartRef.current
-              if (!chart) return
-              const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'
-              const body = chart.closest<HTMLElement>('.modal-body')
-              const tabs = body?.querySelector<HTMLElement>('[data-credential-detail-tab-bar]')
-              // 按真实抽屉标签栏的实际高度定位，只调整本次返回，不影响其他面板的滚动。
-              if (body && tabs) {
-                const top = body.scrollTop + chart.getBoundingClientRect().top - body.getBoundingClientRect().top
-                  - body.clientTop - tabs.getBoundingClientRect().height - 12
-                body.scrollTo({ top: Math.max(0, top), behavior })
-              } else {
-                chart.scrollIntoView({ block: 'start', behavior })
-              }
-              chart.focus({ preventScroll: true })
-            }}
+            onSelect={selectCycle}
+            onReturnToChart={returnToChart}
             deleteDisabled={loading || deleting}
-            onDelete={(cycle) => { setDeleteError(''); setDeleteTarget(cycle) }} />
+            onDelete={openDelete} />
         </>
       ) : !error ? (
         <div className={styles.emptyState}>{t('usage_stats.credentials_quota_history_empty')}</div>
@@ -616,8 +627,8 @@ function CyclesList({
         <>
           {cycles.map((cycle) => (
             <CycleCard key={cycle.id} cycle={cycle} formatTime={formatTime} summary={summaries.get(cycle.id) ?? null}
-              selected={selectedCycleId === cycle.id} onSelect={() => onSelect(cycle.id)} onReturnToChart={onReturnToChart}
-              onDelete={() => onDelete(cycle)} deleteDisabled={deleteDisabled} />
+              selected={selectedCycleId === cycle.id} onSelect={onSelect} onReturnToChart={onReturnToChart}
+              onDelete={onDelete} deleteDisabled={deleteDisabled} />
           ))}
         </>
       )}
@@ -625,7 +636,7 @@ function CyclesList({
   )
 }
 
-function CycleCard({
+const CycleCard = memo(function CycleCard({
   cycle,
   formatTime,
   summary,
@@ -638,10 +649,10 @@ function CycleCard({
   cycle: CodexQuotaHistoryCycle
   formatTime: QuotaHistoryTimeFormatter
   summary: QuotaCycleSummary | null
-  onDelete: () => void
+  onDelete: (cycle: CodexQuotaHistoryCycle) => void
   deleteDisabled: boolean
   selected: boolean
-  onSelect: () => void
+  onSelect: (cycleId: number) => void
   onReturnToChart: () => void
 }) {
   const { t } = useTranslation()
@@ -658,7 +669,7 @@ function CycleCard({
       data-selected={selected}
     >
       {/* 标题和摘要共用选择区域；原生按钮提供键盘入口，明细和删除保留独立操作。 */}
-      <div className={styles.cycleSelection} onClick={onSelect}>
+      <div className={styles.cycleSelection} onClick={() => onSelect(cycle.id)}>
         <button type="button" className={`${styles.boundaryRow} ${styles.startBoundary}`.trim()}
           aria-pressed={selected} data-codex-quota-cycle-select="true">
           <span>{t('usage_stats.credentials_quota_history_cycle_label')}</span>
@@ -698,7 +709,7 @@ function CycleCard({
           {t('usage_stats.credentials_quota_history_return_to_chart')}
         </button> : null}
         <Button type="button" variant="ghost" size="sm" className={styles.deleteCycle}
-          onClick={onDelete} disabled={deleteDisabled}
+          onClick={() => onDelete(cycle)} disabled={deleteDisabled}
           aria-label={t('usage_stats.credentials_quota_history_delete_title')}
           title={t('usage_stats.credentials_quota_history_delete_title')}>
           <IconTrash2 size={15} aria-hidden="true" />
@@ -721,7 +732,7 @@ function CycleCard({
       </div>
     </article>
   )
-}
+})
 
 function CycleQuotaSummary({
   status,
