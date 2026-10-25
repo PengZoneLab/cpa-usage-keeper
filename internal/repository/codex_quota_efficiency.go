@@ -33,6 +33,16 @@ type codexQuotaEfficiencyCyclePeriod struct {
 	current bool
 }
 
+// codexQuotaEfficiencySegmentRow 仅保留百分比摘要和下降区间所需的持久字段。
+type codexQuotaEfficiencySegmentRow struct {
+	ID               int64
+	CycleID          int64
+	RemainingPercent int
+	FirstObservedAt  time.Time `gorm:"serializer:sortableTime"`
+	LastObservedAt   time.Time `gorm:"serializer:sortableTime"`
+	ObservationCount int64
+}
+
 // codexQuotaEfficiencyUsageEventRow 只保存周期和区间累计所需的已存请求事实。
 type codexQuotaEfficiencyUsageEventRow struct {
 	Timestamp           time.Time
@@ -102,14 +112,12 @@ func BuildCodexQuotaEfficiencyHistory(ctx context.Context, db *gorm.DB, query re
 
 	// 角色是稳定选择身份；同一个 Primary/Secondary 的 5h、Weekly、Monthly 周期共同进入完整历史。
 	selectedCycles := make([]entities.QuotaCycle, 0, len(cycles))
-	cycleIDs := make([]int64, 0, len(cycles))
 	for _, cycle := range cycles {
 		windowRole, ok := repositorydto.QuotaWindowRole(query.Provider, cycle.QuotaKey)
 		if !ok || windowRole != selected.WindowRole {
 			continue
 		}
 		selectedCycles = append(selectedCycles, cycle)
-		cycleIDs = append(cycleIDs, cycle.ID)
 	}
 	if len(selectedCycles) == 0 {
 		return result, nil
@@ -120,36 +128,53 @@ func BuildCodexQuotaEfficiencyHistory(ctx context.Context, db *gorm.DB, query re
 	}
 	periods := buildCodexQuotaEfficiencyCyclePeriods(selectedCycles, currentCycleID, query.Now)
 
-	// 所有子段用一次 IN 查询读出；每周期最多 101 个整数桶，不允许对父周期逐条 Preload。
-	var segments []entities.QuotaPercentSegment
+	// 完整父周期先决定窗口及相邻切分，随后只为最终可返回的周期读取子段。
+	returnedCycles := selectedCycles[:0]
+	cycleIDs := make([]int64, 0, len(selectedCycles))
+	for _, cycle := range selectedCycles {
+		period := periods[cycle.ID]
+		if !period.start.Before(period.end) || period.end.Before(query.RangeStart) {
+			continue
+		}
+		if !period.current && period.end.After(query.Now) {
+			continue
+		}
+		returnedCycles = append(returnedCycles, cycle)
+		cycleIDs = append(cycleIDs, cycle.ID)
+	}
+	if len(returnedCycles) == 0 {
+		// 有父历史但无有效周期时，原响应保留非 nil 的空周期列表。
+		result.Cycles = make([]repositorydto.CodexQuotaEfficiencyCycle, 0)
+		return result, nil
+	}
+
+	// 所有子段用一次轻量 IN 查询读出，不允许对父周期逐条 Preload。
+	var segments []codexQuotaEfficiencySegmentRow
 	if err := db.WithContext(ctx).Clauses(dbresolver.Read).
+		Table("quota_percent_segments").
+		Select("id, cycle_id, remaining_percent, first_observed_at, last_observed_at, observation_count").
 		Where("cycle_id IN ?", cycleIDs).
 		Order("cycle_id ASC, first_observed_at ASC, id ASC").
 		Find(&segments).Error; err != nil {
 		return result, fmt.Errorf("list codex quota efficiency segments: %w", err)
 	}
-	segmentsByCycle := make(map[int64][]entities.QuotaPercentSegment, len(selectedCycles))
-	for _, segment := range segments {
-		segmentsByCycle[segment.CycleID] = append(segmentsByCycle[segment.CycleID], segment)
+	segmentsByCycle := make(map[int64][]codexQuotaEfficiencySegmentRow, len(returnedCycles))
+	for start := 0; start < len(segments); {
+		end := start + 1
+		for end < len(segments) && segments[end].CycleID == segments[start].CycleID {
+			end++
+		}
+		// SQL 已按周期及观察顺序排列；只读视图共享底层数组并限制容量，避免复制或跨组追加。
+		segmentsByCycle[segments[start].CycleID] = segments[start:end:end]
+		start = end
 	}
 
 	// 先建立全部指针对象再聚合；统一列表状态完全由本次固定的 now 判定。
-	works := make([]codexQuotaEfficiencyCycleWork, 0, len(selectedCycles))
-	records := make([]*repositorydto.CodexQuotaEfficiencyCycle, 0, len(selectedCycles))
-	for _, cycle := range selectedCycles {
+	works := make([]codexQuotaEfficiencyCycleWork, 0, len(returnedCycles))
+	records := make([]*repositorydto.CodexQuotaEfficiencyCycle, 0, len(returnedCycles))
+	for _, cycle := range returnedCycles {
 		period := periods[cycle.ID]
-		// 新周期的理论起点可能完全覆盖较短的旧周期；此时旧周期没有可展示、可归属的有效区间。
-		if !period.start.Before(period.end) {
-			continue
-		}
-		if period.end.Before(query.RangeStart) {
-			continue
-		}
 		active := period.current
-		ended := !period.end.After(query.Now)
-		if !active && !ended {
-			continue
-		}
 		status := "completed"
 		if active {
 			status = "current"
@@ -227,7 +252,7 @@ func codexQuotaEfficiencyWindowKind(windowSeconds int64) *string {
 	return &kind
 }
 
-func quotaCyclePercentSummary(segments []entities.QuotaPercentSegment) (*int, *int, int64) {
+func quotaCyclePercentSummary(segments []codexQuotaEfficiencySegmentRow) (*int, *int, int64) {
 	if len(segments) == 0 {
 		return nil, nil, 0
 	}
@@ -349,7 +374,7 @@ func buildCodexQuotaEfficiencyCyclePeriods(cycles []entities.QuotaCycle, current
 	return periods
 }
 
-func buildCodexQuotaEfficiencyTransitions(segments []entities.QuotaPercentSegment) []repositorydto.CodexQuotaEfficiencyTransition {
+func buildCodexQuotaEfficiencyTransitions(segments []codexQuotaEfficiencySegmentRow) []repositorydto.CodexQuotaEfficiencyTransition {
 	transitions := make([]repositorydto.CodexQuotaEfficiencyTransition, 0, max(0, len(segments)-1))
 	for index := 1; index < len(segments); index++ {
 		previous := segments[index-1]
