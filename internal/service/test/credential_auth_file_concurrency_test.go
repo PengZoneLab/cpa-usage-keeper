@@ -75,7 +75,7 @@ func TestAuthFileStatusAndPriorityShareMutationLock(t *testing.T) {
 			locks := &service.CredentialMutationLocks{}
 			status := service.NewCredentialStatusService(db, client, nil, locks, nil)
 			priority := service.NewCredentialPriorityService(db, client, nil, locks, nil)
-			bulk := service.NewAuthFilesManagementService(client, locks)
+			bulk := service.NewAuthFilesManagementService(client, nil, locks, nil)
 			actions := map[string]func() error{
 				"status": func() error {
 					if scenario.bulk {

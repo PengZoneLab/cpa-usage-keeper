@@ -29,12 +29,14 @@ type AuthFilesManagementResponse struct {
 }
 
 type authFilesManagementService struct {
-	client AuthFilesManagementClient
-	locks  *CredentialMutationLocks
+	client   AuthFilesManagementClient
+	locks    *CredentialMutationLocks
+	metadata *CredentialMetadataCoordinator
+	refresh  MetadataRefresher
 }
 
-func NewAuthFilesManagementService(client AuthFilesManagementClient, locks *CredentialMutationLocks) AuthFilesManagementProvider {
-	return &authFilesManagementService{client: client, locks: locks}
+func NewAuthFilesManagementService(client AuthFilesManagementClient, refresh MetadataRefresher, locks *CredentialMutationLocks, metadata *CredentialMetadataCoordinator) AuthFilesManagementProvider {
+	return &authFilesManagementService{client: client, refresh: refresh, locks: locks, metadata: metadata}
 }
 
 func (s *authFilesManagementService) SetAuthFilesDisabled(ctx context.Context, names []string, disabled bool) (AuthFilesManagementResponse, error) {
@@ -50,6 +52,7 @@ func (s *authFilesManagementService) SetAuthFilesDisabled(ctx context.Context, n
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	var updateErr error
+	var anySucceeded bool
 	// CPA 的 status 接口一次只接收一个账号；这里在服务端批量 fan-out，并限制并发避免压垮上游。
 	for _, name := range cleanNames {
 		name := name
@@ -71,10 +74,20 @@ func (s *authFilesManagementService) SetAuthFilesDisabled(ctx context.Context, n
 				mu.Lock()
 				updateErr = joinAuthFilesManagementError(updateErr, fmt.Errorf("%s: %w", name, err))
 				mu.Unlock()
+				return
 			}
+			// 批量入口不写本地行；每个远端成功项立即使进行中的旧快照失效。
+			s.metadata.completeMutation(nil)
+			mu.Lock()
+			anySucceeded = true
+			mu.Unlock()
 		}()
 	}
 	wg.Wait()
+	// 部分成功同样需要刷新；整批只向既有防抖 runner 请求一次。
+	if anySucceeded && s.refresh != nil {
+		s.refresh.RequestLocalMetadataRefresh()
+	}
 	if updateErr != nil {
 		return AuthFilesManagementResponse{}, updateErr
 	}
@@ -91,6 +104,11 @@ func (s *authFilesManagementService) DeleteAuthFiles(ctx context.Context, names 
 	}
 	if err := s.client.DeleteAuthFiles(ctx, cleanNames); err != nil {
 		return AuthFilesManagementResponse{}, err
+	}
+	// CPA 的多文件 207 也可能已删除部分文件，成功响应一律失效并从远端重取。
+	s.metadata.completeMutation(nil)
+	if s.refresh != nil {
+		s.refresh.RequestLocalMetadataRefresh()
 	}
 	return AuthFilesManagementResponse{Names: cleanNames, Affected: len(cleanNames)}, nil
 }

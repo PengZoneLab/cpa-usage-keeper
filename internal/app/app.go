@@ -209,7 +209,7 @@ func buildReadyApp(cfg config.Config, db, readDB *gorm.DB, logCloser io.Closer, 
 	cpaAPIKeyService := service.NewCPAAPIKeyService(db)
 	// 单条凭证开关成功后立即与 CPA 对齐；runner 自带合并窗口和 nil 保护。
 	credentialMutationLocks := &service.CredentialMutationLocks{}
-	authFilesManagementService := service.NewAuthFilesManagementService(cpaClient, credentialMutationLocks)
+	authFilesManagementService := service.NewAuthFilesManagementService(cpaClient, metadataSyncRunner, credentialMutationLocks, credentialMetadata)
 	credentialStatusService := service.NewCredentialStatusService(db, cpaClient, metadataSyncRunner, credentialMutationLocks, credentialMetadata)
 	credentialPriorityService := service.NewCredentialPriorityService(db, cpaClient, metadataSyncRunner, credentialMutationLocks, credentialMetadata)
 	if cfg.TLSSkipVerify {
