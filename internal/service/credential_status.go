@@ -37,7 +37,7 @@ type MetadataRefresher interface {
 type CredentialStatusClient interface {
 	UpdateAuthFileStatus(ctx context.Context, name string, authIndex string, disabled bool) (int, error)
 	FetchProviderKeyConfig(ctx context.Context, providerType string) (*response.ProviderKeyConfigResult, error)
-	UpdateProviderConfig(ctx context.Context, providerType string, document *providerconfig.Document) (int, error)
+	UpdateProviderConfig(ctx context.Context, providerType string, document *providerconfig.Document, etag string) (int, error)
 }
 
 // CredentialStatusProvider 暴露单条凭证开关，调用方只提供 CPA auth_index。
@@ -150,7 +150,7 @@ func (s *credentialStatusService) SetAIProviderDisabled(ctx context.Context, aut
 	if err := result.Document.SetKeyExcludedModels(location, nextExcludedModels); err != nil {
 		return CredentialStatusResponse{}, err
 	}
-	statusCode, err := s.client.UpdateProviderConfig(ctx, providerType, result.Document)
+	statusCode, err := s.client.UpdateProviderConfig(ctx, providerType, result.Document, result.ETag)
 	if err != nil {
 		if statusCode == http.StatusNotFound {
 			return CredentialStatusResponse{}, fmt.Errorf("%w: %s provider credential", ErrCredentialStatusNotFound, providerType)

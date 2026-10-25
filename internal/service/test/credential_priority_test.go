@@ -43,7 +43,7 @@ func (s *priorityClientStub) FetchPriorityProviderConfig(_ context.Context, prov
 	return &response.ProviderKeyConfigResult{StatusCode: http.StatusOK, Payload: s.providers[providerType], Document: testProviderDocument(s.providers[providerType])}, nil
 }
 
-func (s *priorityClientStub) UpdateProviderConfig(_ context.Context, providerType string, document *providerconfig.Document) (int, error) {
+func (s *priorityClientStub) UpdateProviderConfig(_ context.Context, providerType string, document *providerconfig.Document, _ string) (int, error) {
 	s.writeType = providerType
 	if providerType == "openai" {
 		before := testOpenAIDocument(s.openAI)

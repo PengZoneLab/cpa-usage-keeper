@@ -26,7 +26,7 @@ var (
 type CredentialPriorityClient interface {
 	UpdateAuthFilePriority(context.Context, string, int) (int, error)
 	FetchPriorityProviderConfig(context.Context, string) (*response.ProviderKeyConfigResult, error)
-	UpdateProviderConfig(context.Context, string, *providerconfig.Document) (int, error)
+	UpdateProviderConfig(context.Context, string, *providerconfig.Document, string) (int, error)
 	FetchOpenAICompatibility(context.Context) (*response.OpenAICompatibilityResult, error)
 }
 
@@ -112,7 +112,7 @@ func (s *credentialPriorityService) SetAIProviderPriority(ctx context.Context, a
 	}
 	// 显式写入成员优先级，即使值为 0 也覆盖组默认值，不影响同组其他 Key。
 	result.Document.SetKeyPriority(location, priority)
-	statusCode, err := s.client.UpdateProviderConfig(ctx, providerType, result.Document)
+	statusCode, err := s.client.UpdateProviderConfig(ctx, providerType, result.Document, result.ETag)
 	if err != nil {
 		return CredentialPriorityResponse{}, priorityWriteError(statusCode, err)
 	}
@@ -136,7 +136,7 @@ func (s *credentialPriorityService) setOpenAIProviderPriority(ctx context.Contex
 		return CredentialPriorityResponse{}, fmt.Errorf("%w: openai credential", ErrCredentialPriorityNotFound)
 	}
 	current.Document.SetGroupPriority(location, priority)
-	statusCode, err := s.client.UpdateProviderConfig(ctx, "openai", current.Document)
+	statusCode, err := s.client.UpdateProviderConfig(ctx, "openai", current.Document, current.ETag)
 	if err != nil {
 		return CredentialPriorityResponse{}, priorityWriteError(statusCode, err)
 	}

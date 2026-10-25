@@ -112,7 +112,7 @@ func (s *credentialStatusClientStub) FetchProviderKeyConfig(_ context.Context, p
 	return snapshot, nil
 }
 
-func (s *credentialStatusClientStub) UpdateProviderConfig(_ context.Context, providerType string, document *providerconfig.Document) (int, error) {
+func (s *credentialStatusClientStub) UpdateProviderConfig(_ context.Context, providerType string, document *providerconfig.Document, _ string) (int, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	updated, err := document.ProviderKeys("")
