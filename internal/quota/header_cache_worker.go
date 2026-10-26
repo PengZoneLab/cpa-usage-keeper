@@ -256,6 +256,28 @@ func mergePendingUsageHeaderCacheSnapshot(existing *UsageHeaderSnapshot, candida
 		mergedSnapshot.pendingMainObservedAt = time.Time{}
 	}
 
+	// 窗口仍整体选最新，限流标记则保留最近一次明确值，避免后续缺字段或乱序 Header 将其丢失/回滚。
+	if mergedUsage.RateLimit != nil {
+		rateLimit := *mergedUsage.RateLimit
+		rateLimit.LimitReached = nil
+		mergedSnapshot.pendingMainLimitReachedObservedAt = time.Time{}
+		for _, snapshot := range []*UsageHeaderSnapshot{existing, candidate} {
+			usage := codexUsagePayloadFromProviderOutput(snapshot.CacheOutput)
+			if usage.RateLimit == nil || usage.RateLimit.LimitReached == nil {
+				continue
+			}
+			observedAt := snapshot.pendingMainLimitReachedObservedAt
+			if observedAt.IsZero() {
+				observedAt = snapshot.ObservedAt
+			}
+			if rateLimit.LimitReached == nil || !usageHeaderObservedAtBefore(observedAt, mergedSnapshot.pendingMainLimitReachedObservedAt) {
+				rateLimit.LimitReached = usage.RateLimit.LimitReached
+				mergedSnapshot.pendingMainLimitReachedObservedAt = observedAt
+			}
+		}
+		mergedUsage.RateLimit = &rateLimit
+	}
+
 	// Additional 按 LimitName 独立比较观察时间；同一 group 的 Primary/Secondary 同样保持整体更新。
 	mergedUsage.AdditionalRateLimits, mergedSnapshot.pendingAdditionalObservedAt = mergePendingCodexAdditionalRateLimits(
 		existing,

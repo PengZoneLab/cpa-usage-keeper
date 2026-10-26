@@ -485,6 +485,93 @@ func TestApplyUsageHeaderSnapshotMergesProgressWithManualAuthoritativeFields(t *
 	}
 }
 
+func TestUsageHeaderLimitReachedUpdatesCacheOnlyWhenPresent(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		header string
+		cached bool
+		want   bool
+	}{
+		{name: "clear", header: "false", cached: true, want: false},
+		{name: "set", header: "true", cached: false, want: true},
+		{name: "missing", cached: true, want: true},
+		{name: "invalid", header: "invalid", cached: true, want: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			db := openQuotaTestDatabase(t)
+			seedUsageIdentity(t, db, entities.UsageIdentity{Identity: "codex-auth", Provider: "codex", Type: "codex", AuthType: entities.UsageIdentityAuthTypeCredential})
+			service := NewServiceWithRegistry(db, NewProviderRegistry(nil))
+			defer service.StopRefreshTasks()
+			base := time.Date(2026, 6, 22, 10, 0, 0, 0, time.UTC)
+			refreshTasks(service)["codex-auth"] = &RefreshTaskRecord{
+				AuthIndex: "codex-auth", Type: "codex", Status: RefreshTaskStatusCompleted,
+				Source: RefreshSourceManual, RefreshedAt: base,
+				Quota: &CheckResponse{Quota: []QuotaRow{
+					{Key: "rate_limit.primary_window", LimitReached: boolPtr(tc.cached)},
+					{Key: "rate_limit.secondary_window", LimitReached: boolPtr(tc.cached)},
+					{Key: "additional_rate_limits.Spark.primary_window", LimitReached: boolPtr(tc.cached)},
+				}},
+			}
+			headers := codexUsageHeader("17")
+			headers.Set("X-Codex-Secondary-Used-Percent", "3")
+			headers.Set("X-Codex-Secondary-Window-Minutes", "10080")
+			headers.Set("X-Codex-Secondary-Reset-At", headers.Get("X-Codex-Primary-Reset-At"))
+			headers.Set("X-Codex-Bengalfox-Limit-Name", "Spark")
+			headers.Set("X-Codex-Bengalfox-Primary-Used-Percent", "2")
+			headers.Set("X-Codex-Bengalfox-Primary-Window-Minutes", "300")
+			headers.Set("X-Codex-Bengalfox-Primary-Reset-At", headers.Get("X-Codex-Primary-Reset-At"))
+			if tc.header != "" {
+				// 同时覆盖 Redis 中 Header 名为小写的情况。
+				headers["x-codex-limit-reached"] = []string{tc.header}
+			}
+			if !applyUsageHeaderSnapshot(service, context.Background(), codexUsageHeaderSnapshotWithHeaders("codex-auth", base.Add(time.Minute), headers)) {
+				t.Fatal("expected newer Header to update cache")
+			}
+			task, err := service.GetRefreshTaskByAuthIndex(context.Background(), "codex-auth")
+			if err != nil || task.Quota == nil || len(task.Quota.Quota) != 3 {
+				t.Fatalf("unexpected quota cache: %+v, err=%v", task, err)
+			}
+			for index, row := range task.Quota.Quota {
+				want := tc.want
+				if index == 2 {
+					want = tc.cached // 主额度标记不能污染 Additional。
+				}
+				if row.LimitReached == nil || *row.LimitReached != want {
+					t.Fatalf("%s: expected limitReached=%v, got %+v", row.Key, want, row)
+				}
+			}
+			assertFloatField(t, task.Quota.Quota[0].UsedPercent, 17, "updated primary usedPercent")
+		})
+	}
+}
+
+func TestUsageHeaderPendingPreservesLatestExplicitLimitReached(t *testing.T) {
+	base := time.Date(2026, 6, 22, 10, 0, 0, 0, time.UTC)
+	pending := make(map[string]UsageHeaderSnapshot)
+	// 缺字段的新 Header 不应吞掉明确值；乱序到达时按字段自己的观察时间选择。
+	for _, step := range []struct {
+		seconds int
+		value   string
+		want    bool
+	}{
+		{10, "false", false},
+		{30, "", false},
+		{20, "true", true},
+		{5, "false", true},
+	} {
+		headers := codexUsageHeader("17")
+		if step.value != "" {
+			headers.Set("X-Codex-Limit-Reached", step.value)
+		}
+		snapshot := codexUsageHeaderSnapshotWithHeaders("codex-auth", base.Add(time.Duration(step.seconds)*time.Second), headers)
+		mergePendingUsageHeaderSnapshots(pending, []UsageHeaderSnapshot{snapshot})
+		rows := NormalizeQuotaRows(pending["codex-auth"].CacheOutput)
+		if len(rows) != 1 || rows[0].LimitReached == nil || *rows[0].LimitReached != step.want {
+			t.Fatalf("after %ds Header: expected limitReached=%v, got %+v", step.seconds, step.want, rows)
+		}
+	}
+}
+
 func TestApplyUsageHeaderSnapshotOverridesCachedSubscriptionWhenHeaderHasPlan(t *testing.T) {
 	db := openQuotaTestDatabase(t)
 	seedUsageIdentity(t, db, entities.UsageIdentity{Identity: "codex-auth", Provider: "codex", Type: "codex", AuthType: entities.UsageIdentityAuthTypeCredential})
