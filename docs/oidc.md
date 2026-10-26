@@ -1,37 +1,56 @@
-[Back to README](../README.md) · [简体中文](./oidc.zh.md)
-
 # OIDC Administrator Login
 
-Keeper can sign administrators in through one OpenID Connect identity provider. Register a confidential client with a client secret, enable Authorization Code Flow with PKCE S256, and register the exact public callback URL:
+[Back to README](../README.md) · [简体中文](./oidc.zh.md)
 
-```text
-https://keeper.example.com/<APP_BASE_PATH>/api/v1/auth/oidc/callback
+OIDC is an optional administrator login method, disabled by default. It is available only on the standalone administrator login page, not for API Key login or CPAMC embedding. Password login remains available.
+
+## Setup
+
+1. Register a confidential server-side client with a client secret at your identity provider, using Authorization Code Flow with PKCE S256.
+2. Register Keeper's public callback URL: `https://keeper.example.com/api/v1/auth/oidc/callback` for a root deployment, or `https://keeper.example.com/keeper/api/v1/auth/oidc/callback` for the `/keeper` base path.
+3. Configure the variables below and administrator access, then restart Keeper. Open Keeper at the same public origin as the callback and select OIDC login.
+
+## Configuration
+
+Keep `AUTH_ENABLED=true` and a private `LOGIN_PASSWORD` so password login remains available during provider outages.
+
+| Variable | Requirement when enabled | Description |
+| --- | --- | --- |
+| `AUTH_OIDC_ENABLED` | Set to `true` | Defaults to `false` |
+| `AUTH_OIDC_ISSUER` | Required | Full provider-advertised issuer, including any tenant path |
+| `AUTH_OIDC_CLIENT_ID` | Required | Registered client ID |
+| `AUTH_OIDC_CLIENT_SECRET` | Required | Client secret |
+| `AUTH_OIDC_REDIRECT_URL` | Required | Public callback URL, exactly matching the provider registration |
+| `AUTH_OIDC_ALLOWED_SUBJECTS` | Optional | JSON array of exact, case-sensitive `sub` values; defaults to `[]` |
+| `AUTH_OIDC_PROMPT_LOGIN` | Optional | Defaults to `true`, sending `prompt=login` to request reauthentication; `false` allows reuse of the provider's login session |
+
+## Restrict Administrator Access
+
+**If `AUTH_OIDC_ALLOWED_SUBJECTS` is omitted or empty, everyone who authenticates for this client becomes a Keeper administrator.** Restrict application access at the provider or configure a subject allowlist:
+
+```env
+AUTH_OIDC_ALLOWED_SUBJECTS='["user-123","user-456"]'
 ```
 
-Omit `<APP_BASE_PATH>/` for a root deployment. Keep `AUTH_ENABLED=true` and a private `LOGIN_PASSWORD`; password login remains available when the identity provider is unavailable.
+Use the actual `sub` issued to this client, not an email, display name, or assumed user ID.
 
-| Variable | Default | Description |
-| --- | --- | --- |
-| `AUTH_OIDC_ENABLED` | `false` | Enable OIDC on the standalone administrator login tab |
-| `AUTH_OIDC_PROMPT_LOGIN` | `true` | Send `prompt=login` to request reauthentication; set to `false` to omit it and allow the provider to reuse its login session |
-| `AUTH_OIDC_ISSUER` | Empty | Exact HTTP/HTTPS issuer, including any tenant path |
-| `AUTH_OIDC_CLIENT_ID` | Empty | Registered server-side client ID |
-| `AUTH_OIDC_CLIENT_SECRET` | Empty | Registered client secret |
-| `AUTH_OIDC_REDIRECT_URL` | Empty | Exact public Keeper callback URL, including the configured base path |
-| `AUTH_OIDC_ALLOWED_SUBJECTS` | `[]` | Optional JSON array of exact, case-sensitive `sub` values |
+A nonempty legacy `AUTH_OIDC_ALLOWED_USERS` prevents startup. Replace it with actual subjects or enforce equivalent access restrictions at the provider before removing the old setting.
 
-For example, `AUTH_OIDC_ALLOWED_SUBJECTS='["user-123","user,456"]'`. Use the actual `sub` issued to this client; do not substitute an email, display name, or assumed platform user ID. An omitted or empty list delegates application access to the identity provider: **everyone who authenticates for this client becomes a Keeper administrator**. Configure the provider's application access policy accordingly. Email and profile claims are used only for display. A nonempty legacy `AUTH_OIDC_ALLOWED_USERS` causes a startup error with migration guidance; convert its intended users to exact subjects or enforce that access policy at the provider before removing it.
+## Sessions And Sign-Out
 
-By default, each new OIDC login requests reauthentication with `prompt=login`; the identity provider chooses the authentication method. Set `AUTH_OIDC_PROMPT_LOGIN=false` to allow reuse of its existing login session. This setting does not revoke existing Keeper sessions or log out the identity provider.
+- `AUTH_SESSION_TTL` controls session lifetime. Sessions can be revoked in Session Management.
+- Signing out revokes only the Keeper session, not the provider session. If provider session reuse is allowed, the next login may complete automatically.
+- Disabling OIDC, changing issuer/client ID, or tightening the subject allowlist revokes affected sessions after restart. Changing only the client secret or `AUTH_OIDC_PROMPT_LOGIN` does not revoke existing sessions.
+- Provider-side account removal or access restrictions do not automatically revoke Keeper sessions; revoke them manually or wait for expiry.
+- Before downgrading to a Keeper version without OIDC support, revoke all OIDC sessions, then stop the service and replace the binary.
 
-Keeper uses standard Discovery and JWKS, `openid profile email`, signed ID Tokens, nonce, browser binding, and PKCE S256. Client secret authentication automatically handles `client_secret_basic` and `client_secret_post`. Metadata may point to different hosts and explicit HTTP/HTTPS endpoints, including endpoints with existing query parameters. Public clients, `form_post`, JWE, JWT client authentication, multi-issuer selection, and global single logout are outside this feature's scope.
+## Networking And Troubleshooting
 
-HTTPS is recommended for the issuer, discovered endpoints, and Keeper. Explicit HTTP URLs are accepted without an extra switch, including non-localhost addresses; HTTP Discovery/JWKS have no protected trust channel, and HTTP Keeper cookies have no transport encryption. HTTPS failures never trigger an HTTP fallback or bypass certificate checks. Install internal CA certificates into the service's trusted certificate chain when needed. Keeper logs a warning for configured or discovered HTTP links. HTTP compatibility is an extension to Discovery's HTTPS requirements; it does not make plaintext links secure.
+- **Addresses and connectivity:** The issuer must exactly match Discovery and the ID Token's `iss`; do not substitute a container-internal address. Keeper must reach Discovery, Token, and JWKS endpoints; browsers must reach the authorization endpoint.
+- **HTTPS:** Use HTTPS for all related addresses. Explicit HTTP URLs are accepted but provide no transport encryption. Install internal CAs into the service's trusted certificate chain; HTTPS failures never trigger a downgrade or bypass verification.
+- **Reverse proxies:** Preserve the public `Host` and `X-Forwarded-Proto` (or supply `X-Forwarded-Host`), and configure actual proxy networks in `TRUSTED_PROXY_CIDRS`. Filter callback query parameters from access logs to avoid recording authorization codes and state.
+- **Interrupted login:** Login attempts expire after five minutes. Click the login button again after a timeout or service restart.
 
-Use the issuer advertised by the provider, exactly matching Discovery and the ID Token `iss`. Keeper must be able to reach Discovery, Token, and JWKS endpoints; the browser must be able to reach the authorization endpoint. These endpoints need not share a host, and an internal container address cannot replace the issuer unless the provider actually advertises that identity.
+## Compatibility
 
-Open Keeper at the same public origin as the callback. Behind HTTPS proxies, preserve the public `Host` and `X-Forwarded-Proto` (or supply `X-Forwarded-Host`) and configure actual proxy networks in `TRUSTED_PROXY_CIDRS`. OIDC does not appear in the API Key tab or CPAMC embed mode. Login restores a valid in-app page and its query parameters. Pending logins expire after five minutes and are held only by the current Keeper process; restart an interrupted attempt by clicking the button again. Exclude callback query parameters from reverse-proxy access logs, because they contain short-lived authorization codes and state.
-
-Canceled authorization and identity-provider outages do not consume the per-source OIDC authentication failure allowance; the existing global login request rate limit still applies.
-
-Completed logins use the existing `AUTH_SESSION_TTL` and show **OIDC login** in Session Management. Signing out revokes only the local Keeper session; when `AUTH_OIDC_PROMPT_LOGIN=false`, the identity provider may sign you in automatically next time. Disabling OIDC, changing issuer/client ID, or tightening the subject list permanently revokes affected sessions during startup, before business routes become ready; this does not require a visit from the old browser or the Session Management page. Changing only the client secret does not revoke them. Provider-side account removal or access changes do not automatically revoke existing Keeper sessions: revoke them in Session Management or wait for their TTL. Before downgrading to a Keeper version without OIDC support, revoke every OIDC session using the new version, then stop Keeper and replace the binary; the added nullable database columns may remain.
+Supports one identity provider, Discovery/JWKS, signed ID Tokens, and `client_secret_basic` / `client_secret_post` authentication. Public clients, `form_post`, JWE, JWT client authentication, multi-issuer selection, and global single logout are not supported.
