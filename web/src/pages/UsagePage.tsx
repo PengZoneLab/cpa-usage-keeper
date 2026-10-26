@@ -1743,7 +1743,7 @@ export function UsagePage({ onAuthRequired }: { onAuthRequired?: () => void }) {
     });
   }, [onAuthRequired, requestLogAccessEnabled, showTopNotice, t]);
 
-  const refreshActiveTab = useCallback(async () => {
+  const refreshActiveTabData = useCallback(async () => {
     if (!apiKeyFilterReady && shouldShowApiKeyFilter(activeTab)) return;
     if (activeTab === 'realtime') {
       await loadRealtime((response) => {
@@ -1770,7 +1770,13 @@ export function UsagePage({ onAuthRequired }: { onAuthRequired?: () => void }) {
     await Promise.all([loadUsage(markOverviewLoaded), loadActivity(), loadComparisons({ onLoaded: markComparisonsLoaded })]);
   }, [activeTab, apiKeyFilterReady, credentialSectionVisibility.enabled, loadActivity, loadAnalysis, loadApiKeySettings, loadAuthSessions, loadComparisons, loadEventFilterOptions, loadEvents, loadRealtime, loadUsage, refreshCredentialDetail, refreshCredentials, markOverviewLoaded, markComparisonsLoaded]);
 
+  const refreshActiveTab = useCallback(async () => {
+    if (!apiKeyFilterReady && shouldShowApiKeyFilter(activeTab)) return;
+    await Promise.all([refreshActiveTabData(), scopedApiKeys.refresh()]);
+  }, [activeTab, apiKeyFilterReady, refreshActiveTabData, scopedApiKeys.refresh]);
+
   const refreshAutoRefreshTab = useCallback(async () => {
+    scopedApiKeys.invalidate();
     if (!apiKeyFilterReady && shouldShowApiKeyFilter(activeTab)) return;
     if (activeTab === 'realtime') {
       await loadRealtime();
@@ -1785,7 +1791,7 @@ export function UsagePage({ onAuthRequired }: { onAuthRequired?: () => void }) {
       return;
     }
     await Promise.all([loadUsage(), loadActivity({ skipIfInFlight: true }), loadComparisons({ skipIfInFlight: true })]);
-  }, [activeTab, apiKeyFilterReady, credentialSectionVisibility.enabled, loadActivity, loadComparisons, loadEvents, loadRealtime, loadUsage, refreshCredentials]);
+  }, [activeTab, apiKeyFilterReady, credentialSectionVisibility.enabled, loadActivity, loadComparisons, loadEvents, loadRealtime, loadUsage, refreshCredentials, scopedApiKeys.invalidate]);
 
   const handleAutoRefreshError = useCallback((error: unknown) => {
     if (recoverRangeBoundsConflict(error)) return;
@@ -2144,7 +2150,7 @@ export function UsagePage({ onAuthRequired }: { onAuthRequired?: () => void }) {
                         value={selectedApiKeyId}
                         options={apiKeySelectOptions}
                         selectedOption={selectedApiKeyOption}
-                        onOpen={scopedApiKeys.refresh}
+                        onOpen={scopedApiKeys.ensureFresh}
                         onChange={setSelectedApiKeyId}
                         className={styles.apiKeySelectControl}
                         ariaLabel={t('usage_stats.api_key_filter')}
@@ -2198,7 +2204,7 @@ export function UsagePage({ onAuthRequired }: { onAuthRequired?: () => void }) {
                   value={selectedApiKeyId}
                   options={apiKeySelectOptions}
                   selectedOption={selectedApiKeyOption}
-                  onOpen={scopedApiKeys.refresh}
+                  onOpen={scopedApiKeys.ensureFresh}
                   onChange={setSelectedApiKeyId}
                   ariaLabel={`${t('usage_stats.api_key_filter')}: ${selectedApiKeyOption.label}`}
                   fullWidth={false}
