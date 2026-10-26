@@ -467,7 +467,7 @@ Raw requests are archived after 90 days and retained indefinitely by default; se
 
 ### Rolling Back A Failed v1-to-v2 Upgrade
 
-Keeper backs up the database before migration. If it fails, follow the [upgrade and rollback guide](./docs/upgrading.md). **Do not open a partially migrated database with v1.**
+Keeper backs up the database before migration. If it fails, follow the [failed migration rollback guide](./docs/upgrading.md). **Do not open a partially migrated database with v1.**
 
 ### Optional Features And Advanced Configuration
 

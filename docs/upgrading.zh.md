@@ -1,8 +1,6 @@
-# 升级与回退
+# v1 升级 v2 失败后的回退
 
 [返回 README](../README.zh.md) · [English](./upgrading.md)
-
-## v1 升级 v2 失败后的回退
 
 Keeper 会在迁移 v1 数据前备份数据库。如果迁移失败且备份验证通过，日志会输出英文回退说明及备份路径 `backup_path`。
 

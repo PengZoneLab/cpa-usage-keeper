@@ -1,8 +1,6 @@
-# Upgrading And Rolling Back
+# Rolling Back A Failed v1-to-v2 Upgrade
 
 [Back to README](../README.md) · [简体中文](./upgrading.zh.md)
-
-## Rolling Back A Failed v1-to-v2 Upgrade
 
 Keeper creates a database backup before migrating v1 data. If migration fails and that backup is verified, the logs include English rollback instructions and its `backup_path`.
 
