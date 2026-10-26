@@ -505,9 +505,7 @@ Credentials 定时限额刷新在 Credentials 巡检弹窗的小齿轮中配置�
 | `BACKUP_RETENTION_DAYS` | 否 | `7` | 备份保留天数 |
 | `USAGE_RAW_RETENTION_DAYS` | 否 | `0` | 原始请求总保留天数，仅清理归档表；`0` 永久保留，`>=90` 生效，负数及 `1～89` 按 `0` 处理并记录 warning，不影响启动 |
 
-Keeper 每天按配置时区在 04:30 自动归档超过 90 个本地自然日的原始请求记录。归档默认永久保留。设置 `USAGE_RAW_RETENTION_DAYS>=90` 后，每日归档完成后会分批删除超过总保留天数的归档记录，期限按请求发生时间及配置时区的自然日计算；热表的 90 天窗口不变。常规页面不直接查询归档明细；历史汇总和备份继续采用各自的保留策略。删除的原始记录无法用于后续历史重算；SQLite 文件不一定立即缩小，空闲空间可复用，并由现有条件式整理回收。
-
-启用文件日志后，`cpa-usage-keeper-YYYY-MM-DD.log` 会记录所有已输出级别；error、fatal 和 panic 级别还会同时写入 `cpa-usage-keeper-error-YYYY-MM-DD.log`，该文件固定保留历史 30 个本地自然日及当天。
+原始请求超过 90 天后自动归档，默认永久保留；设置 `USAGE_RAW_RETENTION_DAYS>=90` 可清理过期归档。删除后无法用于历史重算，也不保证数据库文件立即缩小。详见[存储与日志细节](./docs/configuration.zh.md#存储与日志细节)。
 
 ### v1 升级 v2 失败后的回退
 
