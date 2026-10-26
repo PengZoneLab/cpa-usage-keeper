@@ -4,6 +4,24 @@
 
 See the developer reference in the README for project structure and local setup.
 
+## Tests
+
+Run the full verification baseline from the repository root:
+
+```bash
+make verify
+```
+
+Or run checks individually:
+
+```bash
+go test ./cmd/... ./internal/...
+npm --prefix ./web run test
+npm --prefix ./web run lint
+npm --prefix ./web run typecheck
+npm --prefix ./web run build
+```
+
 ## Chart time handling
 
 - Use the response/configured timezone. Calendar days use `internal/timeutil.CivilDate` and `DayBounds`; rolling windows use elapsed durations. A calendar day is not always 24 hours.

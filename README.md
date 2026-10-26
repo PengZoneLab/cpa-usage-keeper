@@ -191,17 +191,7 @@ Run the full verification baseline:
 make verify
 ```
 
-Or run checks individually:
-
-```bash
-go test ./cmd/... ./internal/...
-npm --prefix ./web run test
-npm --prefix ./web run lint
-npm --prefix ./web run typecheck
-npm --prefix ./web run build
-```
-
-See the [development guide](./docs/development.md) for chart time-handling conventions.
+See the [development guide](./docs/development.md) for individual test commands and chart time-handling conventions.
 
 </details>
 

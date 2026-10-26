@@ -191,17 +191,7 @@ npm --prefix ./web run dev -- --host 127.0.0.1
 make verify
 ```
 
-也可以分别运行：
-
-```bash
-go test ./cmd/... ./internal/...
-npm --prefix ./web run test
-npm --prefix ./web run lint
-npm --prefix ./web run typecheck
-npm --prefix ./web run build
-```
-
-图表时间处理规范见[开发指南](./docs/development.zh.md)。
+分项测试命令和图表时间处理规范见[开发指南](./docs/development.zh.md)。
 
 </details>
 

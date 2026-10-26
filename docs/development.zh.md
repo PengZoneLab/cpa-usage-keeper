@@ -4,6 +4,24 @@
 
 项目结构和本地启动步骤见 README 的开发者参考。
 
+## 测试
+
+在仓库根目录运行完整验证：
+
+```bash
+make verify
+```
+
+也可以分别运行：
+
+```bash
+go test ./cmd/... ./internal/...
+npm --prefix ./web run test
+npm --prefix ./web run lint
+npm --prefix ./web run typecheck
+npm --prefix ./web run build
+```
+
 ## 图表时间处理
 
 - 使用响应/配置时区。自然日使用 `internal/timeutil.CivilDate` 和 `DayBounds`，滚动窗口使用真实时长；自然日不一定是24小时。
