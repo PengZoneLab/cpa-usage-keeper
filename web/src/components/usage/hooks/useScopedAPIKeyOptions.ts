@@ -2,43 +2,51 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, fetchCpaApiKeyOptions, type CpaApiKeyOptionsRequest } from '@/lib/api';
 import type { CpaApiKeyOption } from '@/lib/types';
 
-// 候选集与全局 Key 身份名册独立：范围内无用量不代表已选 Key 已被删除。
+// 候选与身份名册独立；过期只标记，不清空上次成功结果。
 export function useScopedAPIKeyOptions(
   request: CpaApiKeyOptionsRequest | null,
   onOptions: (options: CpaApiKeyOption[]) => void,
   onAuthRequired?: () => void,
   onRangeBoundsConflict?: (error: unknown) => boolean,
 ) {
-  const scopeKey = JSON.stringify(request);
   const controllerRef = useRef<AbortController | null>(null);
-  const [state, setState] = useState<{ key: string; options: CpaApiKeyOption[]; status: 'loading' | 'ready' | 'error' }>({ key: '', options: [], status: 'loading' });
+  const revisionRef = useRef(0);
+  const loadedRevisionRef = useRef(-1);
+  const [state, setState] = useState<{ options: CpaApiKeyOption[]; hasResult: boolean; status: 'loading' | 'ready' | 'error' }>({ options: [], hasResult: false, status: 'ready' });
+  const invalidate = useCallback(() => { revisionRef.current += 1; }, []);
+  // 手动刷新强制请求；打开菜单则由 ensureFresh 判断是否需要更新。
   const refresh = useCallback(async () => {
     controllerRef.current?.abort();
     controllerRef.current = null;
     if (!request) return;
     const controller = new AbortController();
     controllerRef.current = controller;
-    // 同范围刷新保留已有候选；跨页面或时间范围不能沿用旧结果。
-    setState((current) => ({ key: scopeKey, options: current.key === scopeKey ? current.options : [], status: 'loading' }));
+    const revision = revisionRef.current;
+    loadedRevisionRef.current = -1;
+    setState((current) => ({ ...current, status: current.hasResult ? 'ready' : 'loading' }));
     try {
       const response = await fetchCpaApiKeyOptions(controller.signal, request);
       if (controller.signal.aborted || controllerRef.current !== controller) return;
       const options = response.options ?? [];
       onOptions(options);
-      setState({ key: scopeKey, options, status: 'ready' });
+      loadedRevisionRef.current = revision;
+      setState({ options, hasResult: true, status: 'ready' });
     } catch (error) {
       if (controller.signal.aborted || controllerRef.current !== controller) return;
-      setState({ key: scopeKey, options: [], status: 'error' });
+      setState((current) => ({ ...current, status: 'error' }));
       if (error instanceof ApiError && error.status === 401) onAuthRequired?.();
       else onRangeBoundsConflict?.(error);
+    } finally {
+      if (controllerRef.current === controller) controllerRef.current = null;
     }
-  }, [request, scopeKey, onOptions, onAuthRequired, onRangeBoundsConflict]);
+  }, [request, onOptions, onAuthRequired, onRangeBoundsConflict]);
   useEffect(() => {
-    let active = true;
-    queueMicrotask(() => { if (active) void refresh(); });
-    return () => { active = false; controllerRef.current?.abort(); controllerRef.current = null; };
+    invalidate();
+    return () => { controllerRef.current?.abort(); controllerRef.current = null; };
+  }, [invalidate, refresh]);
+  const ensureFresh = useCallback(async () => {
+    if (controllerRef.current || loadedRevisionRef.current === revisionRef.current) return;
+    await refresh();
   }, [refresh]);
-  // 新页面首次渲染就隐藏旧候选项，不等待 effect 发出新请求。
-  const current = state.key === scopeKey;
-  return { options: request && current ? state.options : [], status: !request ? 'ready' : current ? state.status : 'loading', refresh };
+  return { options: state.options, status: request ? state.status : 'ready', refresh, ensureFresh, invalidate };
 }
