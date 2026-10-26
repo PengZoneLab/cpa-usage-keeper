@@ -110,9 +110,7 @@ CPA plugin embedding in CPAMC is also available. Deploy with Docker Compose, Hom
 
 > When multiple usage collectors share one CPA instance, ensure they all use subscription mode; otherwise, collection may stop or become incomplete.
 
-Docker Compose is the recommended deployment method. Use the full stack when deploying CPA and Keeper together, or the Keeper-only stack when CPA already exists.
-
-Docker deployment requires Docker and Docker Compose; you do not need Go, Node.js, or a source build. For an existing CPA, have its address and management key ready, and choose a Keeper login password.
+Docker Compose is recommended; no Go, Node.js, or source build is needed. Choose a deployment below. For an existing CPA, have its address and management key ready, and choose a Keeper login password.
 
 | Setup | Recommended path | Architectures |
 | --- | --- | --- |
@@ -201,8 +199,6 @@ After startup, open `http://your-server-address:8080` (`http://127.0.0.1:8080` f
 
 ### Docker Compose (Recommended)
 
-Docker Compose is recommended for both a complete CPA + Keeper stack and a Keeper-only deployment.
-
 #### CPA + Keeper
 
 **1. Prepare the configuration files**
@@ -250,8 +246,6 @@ Alternatively, put the settings in `./keeper/.env`; the template loads it throug
 docker compose up -d
 ```
 
-Open `http://your-server-address:8080` and sign in with your Keeper password. Run `docker compose down` to stop the stack.
-
 For a new deployment, add model credentials in CPA and make a model request to generate usage records.
 
 CPA data is stored under `./cpa`, and Keeper data is stored under `./keeper`.
@@ -294,13 +288,11 @@ For other network layouts, set `CPA_BASE_URL` to a CPA address reachable from th
 docker compose up -d
 ```
 
-Open `http://your-server-address:8080` and sign in with your Keeper password. Run `docker compose down` to stop the stack.
-
 Keeper data is stored under `./data` by the provided template.
 
 #### Logs and Updates
 
-For either Compose setup, view Keeper logs from the deployment directory:
+For either Compose setup, sign in at `http://your-server-address:8080` with your Keeper password and run `docker compose down` to stop it. View logs from the deployment directory:
 
 ```bash
 docker compose logs --tail=100 -f cpa-usage-keeper
@@ -410,7 +402,7 @@ notepad .env
 .\cpa-usage-keeper.exe
 ```
 
-Set `CPA_BASE_URL`, `CPA_MANAGEMENT_KEY`, and a private `LOGIN_PASSWORD` before starting. Authentication is enabled by default; set `AUTH_ENABLED=false` explicitly only for an isolated deployment.
+Set `CPA_BASE_URL`, `CPA_MANAGEMENT_KEY`, and a private `LOGIN_PASSWORD` before starting.
 
 ## Configuration
 

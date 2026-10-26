@@ -110,9 +110,7 @@
 
 > 同一 CPA 接入多个 usage 采集服务时，请确保均使用订阅模式，否则可能导致收数中断或数据不完整。
 
-Docker Compose 是推荐部署方式：首次部署可同时运行 CPA + Keeper，已有 CPA 时则使用 Keeper-only Compose。
-
-使用 Docker 部署只需准备 Docker 和 Docker Compose，无需安装 Go、Node.js 或编译源码。已有 CPA 时，先准备 CPA 地址、管理密钥和一个 Keeper 登录密码。
+推荐使用 Docker Compose，无需安装 Go、Node.js 或编译源码。按下表选择部署方式；已有 CPA 时，准备好 CPA 地址、管理密钥和 Keeper 登录密码。
 
 | 场景 | 推荐方式 | 架构 |
 | --- | --- | --- |
@@ -201,8 +199,6 @@ make verify
 
 ### Docker Compose（推荐）
 
-Docker Compose 同时推荐用于 CPA + Keeper 联合部署和 Keeper 单独部署。
-
 #### CPA + Keeper
 
 **1. 准备配置文件**
@@ -250,8 +246,6 @@ curl -fL https://raw.githubusercontent.com/Willxup/cpa-usage-keeper/main/deploy/
 docker compose up -d
 ```
 
-访问 `http://服务器地址:8080`，使用刚设置的 Keeper 登录密码登录。停止服务时执行 `docker compose down`。
-
 首次部署还需在 CPA 中添加模型凭证，调用模型后才会产生使用记录。
 
 CPA 数据保存在 `./cpa`，Keeper 数据保存在 `./keeper`。
@@ -294,13 +288,11 @@ LOGIN_PASSWORD=
 docker compose up -d
 ```
 
-访问 `http://服务器地址:8080`，使用刚设置的 Keeper 登录密码登录。停止服务时执行 `docker compose down`。
-
 模板默认将 Keeper 数据保存在 `./data`。
 
 #### 查看日志与更新
 
-两种 Compose 部署均可在部署目录中查看 Keeper 日志：
+两种 Compose 部署均在 `http://服务器地址:8080` 使用 Keeper 密码登录，执行 `docker compose down` 停止服务。在部署目录中查看日志：
 
 ```bash
 docker compose logs --tail=100 -f cpa-usage-keeper
@@ -410,7 +402,7 @@ notepad .env
 .\cpa-usage-keeper.exe
 ```
 
-启动前请设置 `CPA_BASE_URL`、`CPA_MANAGEMENT_KEY` 和私有的 `LOGIN_PASSWORD`。认证默认启用；只有隔离部署才显式设置 `AUTH_ENABLED=false`。
+启动前请设置 `CPA_BASE_URL`、`CPA_MANAGEMENT_KEY` 和私有的 `LOGIN_PASSWORD`。
 
 ## 配置
 
