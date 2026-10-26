@@ -804,8 +804,13 @@ func (s *Service) applyUsageHeaderSnapshotWithIdentity(ctx context.Context, snap
 		// 单条路径没有共享 provider 时走现有 helper 自行构造窗口统计。
 		response = s.attachWindowUsageStats(ctx, authIndex, response, observedAt)
 	}
+	// 明确标记可能来自批次中的旧 Header，必须保留它自己的时间供最终锁内判定。
+	limitReachedObservedAt := timeutil.NormalizeStorageTime(snapshot.pendingMainLimitReachedObservedAt)
+	if limitReachedObservedAt.IsZero() {
+		limitReachedObservedAt = observedAt
+	}
 	// 最后把 header quota 与已有 cache 合并，并写回 refreshTasks。
-	return s.mergeUsageHeaderQuotaCache(authIndex, response, observedAt, identity, generation)
+	return s.mergeUsageHeaderQuotaCache(authIndex, response, observedAt, limitReachedObservedAt, identity, generation)
 }
 
 func usageHeaderIdentityIsCodex(identity entities.UsageIdentity) bool {
@@ -866,7 +871,7 @@ func (s *Service) shouldProcessUsageHeaderQuotaSnapshot(authIndex string, identi
 }
 
 // mergeUsageHeaderQuotaCache 将代数复验和缓存发布合并在 refreshMu 下，阻止查询中的旧结果晚到回写。
-func (s *Service) mergeUsageHeaderQuotaCache(authIndex string, response CheckResponse, observedAt time.Time, identity entities.UsageIdentity, generation uint64) bool {
+func (s *Service) mergeUsageHeaderQuotaCache(authIndex string, response CheckResponse, observedAt time.Time, limitReachedObservedAt time.Time, identity entities.UsageIdentity, generation uint64) bool {
 	// 写 refreshTasks 前加锁，和主动刷新任务状态切换保持同一同步边界。
 	s.refreshMu.Lock()
 	// 函数退出时释放锁。
@@ -890,6 +895,14 @@ func (s *Service) mergeUsageHeaderQuotaCache(authIndex string, response CheckRes
 		// Credential 的真实 type 变化后，旧 provider 的 row、套餐和 credits 不能混进新 cache。
 		if normalizeIdentityType(existing.Type) == normalizeIdentityType(identity.Type) {
 			if existing.Quota != nil {
+				// 旧标记不能借较新窗口的时间覆盖缓存；只跳过主额度标记，进度仍正常合并。
+				if usageHeaderIdentityIsCodex(identity) && usageHeaderCompletedCacheIsCurrentOrNewer(existing, identity.Type, limitReachedObservedAt) {
+					for index := range response.Quota {
+						if strings.HasPrefix(response.Quota[index].Key, "rate_limit.") {
+							response.Quota[index].LimitReached = nil
+						}
+					}
+				}
 				response = mergeUsageHeaderQuotaResponse(*existing.Quota, response)
 			}
 			// Header 无 management api-call，同一 provider 才保留最近主动刷新响应，包括失败任务。

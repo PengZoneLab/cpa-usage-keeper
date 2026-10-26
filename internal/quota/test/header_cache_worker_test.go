@@ -572,6 +572,43 @@ func TestUsageHeaderPendingPreservesLatestExplicitLimitReached(t *testing.T) {
 	}
 }
 
+func TestUsageHeaderPendingDoesNotOverrideNewerManualLimitReached(t *testing.T) {
+	db := openQuotaTestDatabase(t)
+	seedUsageIdentity(t, db, entities.UsageIdentity{Identity: "codex-auth", Provider: "codex", Type: "codex", AuthType: entities.UsageIdentityAuthTypeCredential})
+	service := NewServiceWithRegistry(db, NewProviderRegistry(nil))
+	defer service.StopRefreshTasks()
+	base := time.Date(2026, 6, 22, 10, 0, 0, 0, time.UTC)
+	pending := make(map[string]UsageHeaderSnapshot)
+	headers := codexUsageHeader("100")
+	headers.Set("X-Codex-Limit-Reached", "true")
+	mergePendingUsageHeaderSnapshots(pending, []UsageHeaderSnapshot{
+		codexUsageHeaderSnapshotWithHeaders("codex-auth", base.Add(10*time.Second), headers),
+	})
+	// Header 尚未 flush 时，主动刷新已用更新的 false 替换缓存。
+	refreshTasks(service)["codex-auth"] = &RefreshTaskRecord{
+		AuthIndex: "codex-auth", Type: "codex", Status: RefreshTaskStatusCompleted,
+		Source: RefreshSourceManual, RefreshedAt: base.Add(20 * time.Second),
+		Quota: &CheckResponse{Quota: []QuotaRow{{
+			Key: "rate_limit.primary_window", UsedPercent: floatPtr(5), LimitReached: boolPtr(false),
+		}}},
+	}
+	mergePendingUsageHeaderSnapshots(pending, []UsageHeaderSnapshot{
+		codexUsageHeaderSnapshot("codex-auth", base.Add(30*time.Second), "17"),
+	})
+	if !applyUsageHeaderSnapshot(service, context.Background(), pending["codex-auth"]) {
+		t.Fatal("expected newer Header progress to update cache")
+	}
+	task, err := service.GetRefreshTaskByAuthIndex(context.Background(), "codex-auth")
+	if err != nil || task.Quota == nil || len(task.Quota.Quota) != 1 {
+		t.Fatalf("unexpected quota cache: %+v, err=%v", task, err)
+	}
+	row := task.Quota.Quota[0]
+	if row.LimitReached == nil || *row.LimitReached {
+		t.Fatalf("old pending limitReached must not override newer manual false: %+v", row)
+	}
+	assertFloatField(t, row.UsedPercent, 17, "updated primary usedPercent")
+}
+
 func TestApplyUsageHeaderSnapshotOverridesCachedSubscriptionWhenHeaderHasPlan(t *testing.T) {
 	db := openQuotaTestDatabase(t)
 	seedUsageIdentity(t, db, entities.UsageIdentity{Identity: "codex-auth", Provider: "codex", Type: "codex", AuthType: entities.UsageIdentityAuthTypeCredential})
