@@ -531,10 +531,8 @@ Keeper 会在迁移 v1 数据前备份数据库。如果迁移失败且备份验
 
 - 浏览器 API 会脱敏 key 类字段，但 SQLite 数据库及其未加密备份仍包含原始数据。
 - 认证默认启用。若显式关闭，请在部署边界限制 Keeper 访问；公网访问应在反向代理层启用 HTTPS。
-- 登录 session hash 会保存在 SQLite 中，直到用户退出或超过 `AUTH_SESSION_TTL`。
-- CPAMC 使用独立的 embed session：优先使用 `HttpOnly` Cookie，不可用时回退到保存在浏览器 session storage 中的单标签页请求头 token。
-- 同源嵌入默认可用；跨域嵌入时，将 `CPA_PUBLIC_URL` 设置为用于 `frame-ancestors` 的公开 CPA/CPAMC 来源。
-- Redis inbox 消息成功后保留到当天结束，失败后保留 7 天。
+
+会话、嵌入认证和消息保留细节见[高级配置](./docs/configuration.zh.md#会话与消息保留)。
 
 ## Nginx 反向代理
 

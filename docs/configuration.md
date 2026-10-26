@@ -17,6 +17,13 @@ See the README for connection, login, and common settings, and [`.env.example`](
 
 See the [README](../README.md#nginx-reverse-proxy) for an Nginx example.
 
+## Session And Message Retention
+
+- Login session hashes persist in SQLite until logout or `AUTH_SESSION_TTL` expiry.
+- CPAMC uses a separate embed session: an `HttpOnly` cookie when available, or a per-tab header token in browser session storage as a fallback.
+- Same-origin embedding works by default. For cross-origin embedding, set `CPA_PUBLIC_URL` to the public CPA/CPAMC origin used for `frame-ancestors`.
+- Redis inbox messages are retained through the current day after success or for 7 days after failure.
+
 ## Storage And Log Details
 
 Keeper archives raw request records older than 90 local calendar days daily at 04:30 in the configured timezone. Archives are retained permanently by default. With `USAGE_RAW_RETENTION_DAYS>=90`, daily maintenance deletes expired archived records in batches after archiving, using the request timestamp and local calendar days in the configured timezone. The 90-day hot-table window remains unchanged. Normal pages do not directly query archived records; historical aggregates and backups keep their own retention policies. Deleted raw records cannot support later historical recalculation. Deletion may not immediately shrink the SQLite file: freed space can be reused and is reclaimed by the existing conditional compaction policy.

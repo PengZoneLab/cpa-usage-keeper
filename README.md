@@ -531,10 +531,8 @@ Security and data notes:
 
 - Browser APIs redact key-like fields, but the SQLite database and its unencrypted backups contain original data.
 - Authentication is enabled by default. If it is explicitly disabled, restrict Keeper access at the deployment boundary; terminate public HTTPS at a reverse proxy.
-- Login session hashes persist in SQLite until logout or `AUTH_SESSION_TTL` expiry.
-- CPAMC uses a separate embed session: an `HttpOnly` cookie when available, or a per-tab header token in browser session storage as a fallback.
-- Same-origin embedding works by default. For cross-origin embedding, set `CPA_PUBLIC_URL` to the public CPA/CPAMC origin used for `frame-ancestors`.
-- Redis inbox messages are retained through the current day after success or for 7 days after failure.
+
+See [advanced configuration](./docs/configuration.md#session-and-message-retention) for session, embedded authentication, and message retention details.
 
 ## Nginx Reverse Proxy
 
