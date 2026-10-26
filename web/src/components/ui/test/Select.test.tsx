@@ -3,7 +3,7 @@ import { act, StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { resolve } from 'node:path';
 import { compile } from 'sass';
-import { expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Modal } from '../Modal';
 import { Select } from '../Select';
 import styles from '../Select.module.scss';
@@ -12,14 +12,23 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 const selectCSS = compile(resolve(process.cwd(), 'src/components/ui/Select.module.scss')).css;
 
-it('calls onOpen once per opening, not when callbacks or options change', async () => {
-  const container = document.createElement('div');
-  document.body.append(container);
-  const root = createRoot(container);
-  const first = vi.fn();
-  const next = vi.fn();
-  const onChange = vi.fn();
-  try {
+describe('scoped candidate selection', () => {
+  let container: HTMLDivElement;
+  let root: ReturnType<typeof createRoot>;
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.append(container);
+    root = createRoot(container);
+  });
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    container.remove();
+  });
+
+  it('calls onOpen once per opening, not when callbacks or options change', async () => {
+    const first = vi.fn();
+    const next = vi.fn();
+    const onChange = vi.fn();
     const render = async (onOpen: () => void, label: string) => {
       await act(async () => root.render(<StrictMode><Select value="a" options={[{ value: 'a', label }]} onChange={onChange} onOpen={onOpen} /></StrictMode>));
     };
@@ -38,18 +47,10 @@ it('calls onOpen once per opening, not when callbacks or options change', async 
     expect(onChange).toHaveBeenCalledExactlyOnceWith('a');
     await act(async () => trigger.click());
     expect(next).toHaveBeenCalledTimes(2);
-  } finally {
-    await act(async () => root.unmount());
-    container.remove();
-  }
-});
+  });
 
-it('displays a matching fallback selection without adding it to the candidates', async () => {
-  const container = document.createElement('div');
-  document.body.append(container);
-  const root = createRoot(container);
-  const onChange = vi.fn();
-  try {
+  it('displays a matching fallback selection without adding it to the candidates', async () => {
+    const onChange = vi.fn();
     await act(async () => root.render(<Select value="saved" options={[{ value: '', label: 'All' }]} selectedOption={{ value: 'saved', label: 'Saved key' }} onChange={onChange} />));
     const trigger = container.querySelector<HTMLButtonElement>('button')!;
     expect(trigger.textContent).toContain('Saved key');
@@ -64,10 +65,7 @@ it('displays a matching fallback selection without adding it to the candidates',
     await act(async () => root.render(<Select value="saved" options={[]} placeholder="Choose" onChange={onChange} />));
     expect(trigger.textContent).toContain('Choose');
     expect(onChange).not.toHaveBeenCalled();
-  } finally {
-    await act(async () => root.unmount());
-    container.remove();
-  }
+  });
 });
 
 it('renders disabled selects with the shared inert control state', async () => {
