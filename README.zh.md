@@ -238,7 +238,7 @@ curl -fL https://raw.githubusercontent.com/Willxup/cpa-usage-keeper/main/deploy/
 - `CPA_MANAGEMENT_KEY`：填写 CPA 中设置的同一个原始管理密钥。
 - `LOGIN_PASSWORD`：将空字符串 `""` 替换为你自己的 Keeper 登录密码。
 
-也可将配置写入 `./keeper/.env`，模板会通过可选的 `env_file` 读取；文件不存在时不影响 Compose 启动。同名变量以 `environment` 为准，如改用文件中的值，请删除 `environment` 中对应项，包括空值占位。
+可选的环境文件配置见[高级配置](./docs/configuration.zh.md#compose-可选环境文件)。
 
 **3. 启动并访问**
 
@@ -290,7 +290,7 @@ docker compose up -d
 
 模板默认将 Keeper 数据保存在 `./data`。
 
-#### 查看日志与更新
+#### 访问与日常管理
 
 两种 Compose 部署均在 `http://服务器地址:8080` 使用 Keeper 密码登录，执行 `docker compose down` 停止服务。在部署目录中查看日志：
 
@@ -442,12 +442,6 @@ Docker/Compose 请保持 `APP_HOST` 为空；仅限宿主机访问时，将端�
 | `CPA_REQUEST_LOG_ACCESS_ENABLED` | 否 | `false` | 允许管理员通过 Keeper 查看和下载 CPA 请求日志；需要 CPA 中存在对应日志，内容可能包含请求或响应数据 |
 | `AUTH_SESSION_TTL` | 否 | `168h` | 登录 session 有效时长 |
 
-### OIDC 管理员登录
-
-支持可选的 OIDC 管理员登录，默认关闭；需要时参阅 [OIDC 配置指南](./docs/oidc.zh.md)。仍须保留 `AUTH_ENABLED=true` 和私有的 `LOGIN_PASSWORD`，以便使用密码登录。
-
-**访问控制：**未通过 `AUTH_OIDC_ALLOWED_SUBJECTS` 限制用户时，通过该客户端认证的所有用户都会成为 Keeper 管理员，请在身份平台限制应用访问权限。
-
 ### 时区与请求行为
 
 | 变量 | 必填 | 默认值 | 说明 |
@@ -455,16 +449,6 @@ Docker/Compose 请保持 `APP_HOST` 为空；仅限宿主机访问时，将端�
 | `TZ` | 否 | `Asia/Shanghai` | 统计和展示使用的时区；Today、按天统计、页面时间、日志时间和每日清理时间都会按这个时区计算 |
 | `REQUEST_TIMEOUT` | 否 | `30s` | 请求 CPA HTTP 接口和 Redis 队列的超时时间 |
 | `TLS_SKIP_VERIFY` | 否 | `false` | 跳过 CPA HTTPS 和 Redis 队列 TLS 的证书验证；仅在使用自签名证书时启用 |
-
-### Credentials 限额刷新
-
-Credentials 定时限额刷新在 Credentials 巡检弹窗的小齿轮中配置。设置保存在本地 SQLite，不依赖页面保持打开。
-
-并发和排障参数见[高级配置](./docs/configuration.zh.md#credentials-限额刷新)。
-
-### Redis 队列高级配置
-
-通常无需修改。独立队列地址、TLS 和拉取参数见[高级配置](./docs/configuration.zh.md#redis-队列高级配置)。
 
 ### 存储、日志与备份
 
@@ -485,16 +469,17 @@ Credentials 定时限额刷新在 Credentials 巡检弹窗的小齿轮中配置�
 
 迁移前会自动备份数据库；失败后请按[升级与回退指南](./docs/upgrading.zh.md)恢复。**不要让 v1 直接打开迁移了一部分的数据库。**
 
-### 内置 HTTPS
+### 可选功能与高级配置
 
-通常建议由 nginx、Caddy 等反向代理提供 HTTPS；需要 Keeper 直接提供 HTTPS 时，参阅[内置 HTTPS 配置](./docs/configuration.zh.md#内置-https)。
+- [OIDC 管理员登录](./docs/oidc.zh.md)：默认关闭，仍需保留密码登录。**未限制 subject 时，该客户端认证的所有用户均为管理员，须在身份平台限制应用访问。**
+- [限额刷新](./docs/configuration.zh.md#credentials-限额刷新)：定时刷新在 Credentials 巡检弹窗的小齿轮中设置，保存后无需保持页面打开；文档提供并发与排障参数。
+- [Redis 队列](./docs/configuration.zh.md#redis-队列高级配置)：独立地址、TLS 和拉取参数，通常保持默认。
+- [内置 HTTPS](./docs/configuration.zh.md#内置-https)：仅在 Keeper 需直接提供 HTTPS 时配置；通常使用 nginx、Caddy 等反向代理。
 
-安全与数据说明：
+### 安全提醒
 
 - 浏览器 API 会脱敏 key 类字段，但 SQLite 数据库及其未加密备份仍包含原始数据。
 - 认证默认启用。若显式关闭，请在部署边界限制 Keeper 访问；公网访问应在反向代理层启用 HTTPS。
-
-会话、嵌入认证和消息保留细节见[高级配置](./docs/configuration.zh.md#会话与消息保留)。
 
 ## Nginx 反向代理
 

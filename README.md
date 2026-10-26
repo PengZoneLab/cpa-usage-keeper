@@ -238,7 +238,7 @@ Edit the downloaded `docker-compose.yml` and fill in two values under Keeper's `
 - `CPA_MANAGEMENT_KEY`: use the same original management key configured in CPA.
 - `LOGIN_PASSWORD`: replace the empty string `""` with your own Keeper login password.
 
-Alternatively, put the settings in `./keeper/.env`; the template loads it through an optional `env_file` entry and accepts a missing file. Values in `environment` take precedence, so remove the corresponding entries, including empty placeholders, to use values from the file.
+For optional environment-file setup, see [advanced configuration](./docs/configuration.md#optional-compose-environment-file).
 
 **3. Start and open Keeper**
 
@@ -290,7 +290,7 @@ docker compose up -d
 
 Keeper data is stored under `./data` by the provided template.
 
-#### Logs and Updates
+#### Access And Routine Management
 
 For either Compose setup, sign in at `http://your-server-address:8080` with your Keeper password and run `docker compose down` to stop it. View logs from the deployment directory:
 
@@ -442,12 +442,6 @@ For Docker/Compose, keep `APP_HOST` empty; publish `127.0.0.1:8080:8080` for hos
 | `CPA_REQUEST_LOG_ACCESS_ENABLED` | No | `false` | Allow administrators to view and download CPA request logs through Keeper; corresponding logs must exist in CPA and may contain request or response data |
 | `AUTH_SESSION_TTL` | No | `168h` | Login session lifetime |
 
-### OIDC Administrator Login
-
-Optional OIDC administrator login is disabled by default; see the [OIDC setup guide](./docs/oidc.md) to enable it. Keep `AUTH_ENABLED=true` and a private `LOGIN_PASSWORD` for password login.
-
-**Access control:** without an `AUTH_OIDC_ALLOWED_SUBJECTS` restriction, everyone who authenticates for the configured client becomes a Keeper administrator; restrict application access at the identity provider.
-
 ### Timezone And Request Behavior
 
 | Variable | Required | Default | Description |
@@ -455,16 +449,6 @@ Optional OIDC administrator login is disabled by default; see the [OIDC setup gu
 | `TZ` | No | `Asia/Shanghai` | Timezone used for statistics and display; Today, daily totals, page timestamps, log timestamps, and daily cleanup are calculated in this timezone |
 | `REQUEST_TIMEOUT` | No | `30s` | Timeout for CPA HTTP requests and Redis queue operations |
 | `TLS_SKIP_VERIFY` | No | `false` | Skip TLS certificate verification for CPA HTTPS and Redis queue TLS; enable only with self-signed certificates |
-
-### Credentials Quota Refresh
-
-Scheduled Credentials quota refresh is configured from the gear button in the Credentials inspection dialog. The setting is stored in the local SQLite database and does not require the page to stay open.
-
-See [advanced configuration](./docs/configuration.md#credentials-quota-refresh) for concurrency and debugging settings.
-
-### Redis Queue Advanced Settings
-
-Defaults usually suffice. See [advanced configuration](./docs/configuration.md#redis-queue-advanced-settings) for separate queue addresses, TLS, and polling settings.
 
 ### Storage, Logs, And Backups
 
@@ -485,16 +469,17 @@ Raw requests are archived after 90 days and retained indefinitely by default; se
 
 Keeper backs up the database before migration. If it fails, follow the [upgrade and rollback guide](./docs/upgrading.md). **Do not open a partially migrated database with v1.**
 
-### Built-In HTTPS
+### Optional Features And Advanced Configuration
 
-Prefer HTTPS termination at nginx, Caddy, or another reverse proxy. To serve HTTPS directly from Keeper, see [built-in HTTPS configuration](./docs/configuration.md#built-in-https).
+- [OIDC administrator login](./docs/oidc.md): disabled by default; keep password login configured. **Without subject restrictions, all users authenticated for the client become administrators; restrict application access at the provider.**
+- [Quota refresh](./docs/configuration.md#credentials-quota-refresh): configure schedules from the gear button in the Credentials inspection dialog; the page need not stay open after saving. The guide covers concurrency and debugging settings.
+- [Redis queue](./docs/configuration.md#redis-queue-advanced-settings): separate addresses, TLS, and polling settings; defaults usually suffice.
+- [Built-in HTTPS](./docs/configuration.md#built-in-https): for Keeper to serve HTTPS directly; usually, use nginx, Caddy, or another reverse proxy instead.
 
-Security and data notes:
+### Security Notes
 
 - Browser APIs redact key-like fields, but the SQLite database and its unencrypted backups contain original data.
 - Authentication is enabled by default. If it is explicitly disabled, restrict Keeper access at the deployment boundary; terminate public HTTPS at a reverse proxy.
-
-See [advanced configuration](./docs/configuration.md#session-and-message-retention) for session, embedded authentication, and message retention details.
 
 ## Nginx Reverse Proxy
 
