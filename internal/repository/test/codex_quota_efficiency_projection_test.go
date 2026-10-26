@@ -2,10 +2,8 @@ package test
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"math"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -43,18 +41,8 @@ func TestQuotaEfficiencySegmentProjectionPreservesCompleteResponse(t *testing.T)
 					if selected == "" {
 						selected = "primary"
 					}
-					got, err := json.MarshalIndent(result, "", "  ")
-					if err != nil {
-						t.Fatal(err)
-					}
 					fixture := filepath.Join("testdata", "quota_efficiency_projection", strings.ReplaceAll(zone, "/", "_")+"_"+selected+".json")
-					want, err := os.ReadFile(fixture)
-					if err != nil {
-						t.Fatal(err)
-					}
-					if string(got)+"\n" != string(want) {
-						t.Fatalf("complete history differs from C2 fixture %s:\n%s", fixture, got)
-					}
+					assertQuotaEfficiencyHistoryFixture(t, fixture, result)
 					assertQuotaEfficiencySegmentProjection(t, statements, ids[selected], 4)
 				})
 			}

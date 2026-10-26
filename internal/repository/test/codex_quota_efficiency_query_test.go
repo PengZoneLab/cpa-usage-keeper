@@ -30,12 +30,7 @@ func TestCodexQuotaEfficiencyStoredCostIgnoresPricingDimensions(t *testing.T) {
 			if err := db.Model(&entities.UsageEvent{}).Where("event_key = ?", "special").Update(field, "special").Error; err != nil {
 				t.Fatal(err)
 			}
-			result, err := repository.BuildCodexQuotaEfficiencyHistory(context.Background(), db, repositorydto.CodexQuotaEfficiencyQuery{
-				AuthIndex: "codex-auth", Now: now, RangeStart: now.Add(-30 * 24 * time.Hour),
-			})
-			if err != nil {
-				t.Fatal(err)
-			}
+			result := buildCodexQuotaEfficiencyForTest(t, db, "codex-auth", now)
 			assertCodexQuotaEfficiencyUsage(t, result.Cycles[0].Usage, 2_000_000, 2, true)
 			assertCodexQuotaEfficiencyUsage(t, result.Cycles[0].Transitions[0].Usage, 2_000_000, 2, true)
 		})
@@ -70,12 +65,7 @@ func TestCodexQuotaEfficiencyUsesStoredCostWithNonAdditiveLegacyTokens(t *testin
 				usageEventForQuotaEfficiency("completed", "oauth", "codex-auth", now.Add(-8*time.Hour-30*time.Minute), 400_000),
 				normal, legacy,
 			)
-			result, err := repository.BuildCodexQuotaEfficiencyHistory(context.Background(), db, repositorydto.CodexQuotaEfficiencyQuery{
-				AuthIndex: "codex-auth", Now: now, RangeStart: now.Add(-30 * 24 * time.Hour),
-			})
-			if err != nil {
-				t.Fatal(err)
-			}
+			result := buildCodexQuotaEfficiencyForTest(t, db, "codex-auth", now)
 			assertCodexQuotaEfficiencyUsage(t, result.Cycles[0].Usage, 2_000_000, 2, true)
 			assertCodexQuotaEfficiencyUsage(t, result.Cycles[0].Transitions[0].Usage, 2_000_000, 2, true)
 			// 旧数据位于后一个周期时，已经处理过的周期及变化区间也不能重复累加。
@@ -107,12 +97,7 @@ func TestCodexQuotaEfficiencyReadsNullableLegacyFieldsAndAlias(t *testing.T) {
 	aliased := usageEventForQuotaEfficiency("alias", "oauth", "codex-auth", now.Add(-time.Hour), 1_000_000)
 	aliased.Model, aliased.ModelAlias, aliased.Failed = "unknown-model", &alias, true
 	seedCodexQuotaEfficiencyUsage(t, db, aliased)
-	result, err := repository.BuildCodexQuotaEfficiencyHistory(context.Background(), db, repositorydto.CodexQuotaEfficiencyQuery{
-		AuthIndex: "codex-auth", Now: now, RangeStart: now.Add(-30 * 24 * time.Hour),
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	result := buildCodexQuotaEfficiencyForTest(t, db, "codex-auth", now)
 	for _, usage := range []repositorydto.CodexQuotaEfficiencyUsage{result.Cycles[0].Usage, result.Cycles[0].Transitions[0].Usage} {
 		assertCodexQuotaEfficiencyUsage(t, usage, 1_000_000, 1, true)
 		if usage.Requests != 2 || usage.SuccessfulRequests != 1 || usage.FailedRequests != 1 {
@@ -138,12 +123,7 @@ func TestCodexQuotaEfficiencyPreservesTokenComponents(t *testing.T) {
 	firstCost, secondCost := 2.5, 4.975
 	first.CostUSD, second.CostUSD = &firstCost, &secondCost
 	seedCodexQuotaEfficiencyUsage(t, db, first, second)
-	result, err := repository.BuildCodexQuotaEfficiencyHistory(context.Background(), db, repositorydto.CodexQuotaEfficiencyQuery{
-		AuthIndex: "codex-auth", Now: now, RangeStart: now.Add(-30 * 24 * time.Hour),
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	result := buildCodexQuotaEfficiencyForTest(t, db, "codex-auth", now)
 	for _, usage := range []repositorydto.CodexQuotaEfficiencyUsage{result.Cycles[0].Usage, result.Cycles[0].Transitions[0].Usage} {
 		assertCodexQuotaEfficiencyUsage(t, usage, 3_500_000, 7.475, true)
 		if usage.InputTokens != 3_000_000 || usage.OutputTokens != 500_000 || usage.ReasoningTokens != 150_000 ||

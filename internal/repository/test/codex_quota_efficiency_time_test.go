@@ -369,22 +369,12 @@ func TestQuotaEfficiencyTimeReadOrdinaryResponseBaseline(t *testing.T) {
 						selected = &role
 					}
 					result := queryQuotaEfficiencyTimeHistory(t, db, provider, selected, now)
-					actual, err := json.MarshalIndent(result, "", "  ")
-					if err != nil {
-						t.Fatal(err)
-					}
 					fixtureRole := role
 					if role == "default" {
 						fixtureRole = "primary"
 					}
 					fixturePath := filepath.Join("testdata", "quota_efficiency_time", strings.ReplaceAll(zone, "/", "_")+"_"+fixtureRole+".json")
-					want, err := os.ReadFile(fixturePath)
-					if err != nil {
-						t.Fatal(err)
-					}
-					if string(actual)+"\n" != string(want) {
-						t.Fatalf("%s/%s response changed:\ngot %s\nwant %s", provider, role, actual, want)
-					}
+					assertQuotaEfficiencyHistoryFixture(t, fixturePath, result)
 				}
 			}
 		})
@@ -458,6 +448,21 @@ func seedQuotaEfficiencyRawTimeEvents(t testing.TB, db *gorm.DB, provider string
 		events[index] = event
 	}
 	return events
+}
+
+func assertQuotaEfficiencyHistoryFixture(t *testing.T, path string, result repositorydto.CodexQuotaEfficiencyHistory) {
+	t.Helper()
+	actual, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(actual)+"\n" != string(want) {
+		t.Fatalf("complete history differs from frozen fixture %s:\ngot %s\nwant %s", path, actual, want)
+	}
 }
 
 func queryQuotaEfficiencyTimeHistory(t *testing.T, db *gorm.DB, provider string, role *string, now time.Time) repositorydto.CodexQuotaEfficiencyHistory {
