@@ -485,12 +485,7 @@ Scheduled Credentials quota refresh is configured from the gear button in the Cr
 
 ### Redis Queue Advanced Settings
 
-| Variable | Required | Default | Description |
-| --- | --- | --- | --- |
-| `REDIS_QUEUE_ADDR` | No | Derived from `CPA_BASE_URL` | An explicit value takes precedence. When empty, use the hostname and explicit port from `CPA_BASE_URL`, or `8317` if no port is specified. Set `host:port` for a separate address |
-| `REDIS_QUEUE_TLS` | No | `false` | Set to `true` to force TLS for the Redis queue; when no queue address is specified, TLS follows the protocol of `CPA_BASE_URL` by default. `false` does not override automatically inferred TLS settings. |
-| `REDIS_QUEUE_BATCH_SIZE` | No | `10000` | Maximum queue records per pull |
-| `REDIS_QUEUE_IDLE_INTERVAL` | No | `1s` | Empty queue check interval |
+Defaults usually suffice. See [advanced configuration](./docs/configuration.md#redis-queue-advanced-settings) for separate queue addresses, TLS, and polling settings.
 
 ### Storage, Logs, And Backups
 

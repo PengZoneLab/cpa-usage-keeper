@@ -485,12 +485,7 @@ Credentials 定时限额刷新在 Credentials 巡检弹窗的小齿轮中配置�
 
 ### Redis 队列高级配置
 
-| 变量 | 必填 | 默认值 | 说明 |
-| --- | --- | --- | --- |
-| `REDIS_QUEUE_ADDR` | 否 | 从 `CPA_BASE_URL` 推导 | 显式设置时优先使用该地址；留空时沿用 `CPA_BASE_URL` 的主机和显式端口，未指定端口时使用 `8317`。独立地址填写 `host:port` |
-| `REDIS_QUEUE_TLS` | 否 | `false` | 设为 `true` 强制启用 Redis 队列 TLS；未指定队列地址时，默认跟随 `CPA_BASE_URL` 的协议。`false` 不会覆盖自动推导的 TLS 设置。 |
-| `REDIS_QUEUE_BATCH_SIZE` | 否 | `10000` | 每次最多拉取的队列记录数 |
-| `REDIS_QUEUE_IDLE_INTERVAL` | 否 | `1s` | 队列为空时的检查间隔 |
+通常无需修改。独立队列地址、TLS 和拉取参数见[高级配置](./docs/configuration.zh.md#redis-队列高级配置)。
 
 ### 存储、日志与备份
 

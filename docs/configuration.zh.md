@@ -17,6 +17,17 @@
 
 Nginx 示例见 [README](../README.zh.md#nginx-反向代理)。
 
+## Redis 队列高级配置
+
+| 变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `REDIS_QUEUE_ADDR` | 从 `CPA_BASE_URL` 推导 | 显式设置时优先使用该地址；留空时沿用 `CPA_BASE_URL` 的主机和显式端口，未指定端口时使用 `8317`。独立地址填写 `host:port` |
+| `REDIS_QUEUE_TLS` | `false` | 设为 `true` 强制启用 Redis 队列 TLS；未指定队列地址时，默认跟随 `CPA_BASE_URL` 的协议。`false` 不会覆盖自动推导的 TLS 设置。 |
+| `REDIS_QUEUE_BATCH_SIZE` | `10000` | 每次最多拉取的队列记录数 |
+| `REDIS_QUEUE_IDLE_INTERVAL` | `1s` | 队列为空时的检查间隔 |
+
+以上变量均为可选配置。
+
 ## 会话与消息保留
 
 - 登录 session hash 会保存在 SQLite 中，直到用户退出或超过 `AUTH_SESSION_TTL`。

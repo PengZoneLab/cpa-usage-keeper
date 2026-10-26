@@ -17,6 +17,17 @@ See the README for connection, login, and common settings, and [`.env.example`](
 
 See the [README](../README.md#nginx-reverse-proxy) for an Nginx example.
 
+## Redis Queue Advanced Settings
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `REDIS_QUEUE_ADDR` | Derived from `CPA_BASE_URL` | An explicit value takes precedence. When empty, use the hostname and explicit port from `CPA_BASE_URL`, or `8317` if no port is specified. Set `host:port` for a separate address |
+| `REDIS_QUEUE_TLS` | `false` | Set to `true` to force TLS for the Redis queue; when no queue address is specified, TLS follows the protocol of `CPA_BASE_URL` by default. `false` does not override automatically inferred TLS settings. |
+| `REDIS_QUEUE_BATCH_SIZE` | `10000` | Maximum queue records per pull |
+| `REDIS_QUEUE_IDLE_INTERVAL` | `1s` | Empty queue check interval |
+
+All variables above are optional.
+
 ## Session And Message Retention
 
 - Login session hashes persist in SQLite until logout or `AUTH_SESSION_TTL` expiry.
