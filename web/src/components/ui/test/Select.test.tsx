@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { act } from 'react';
+import { act, StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { resolve } from 'node:path';
 import { compile } from 'sass';
@@ -11,6 +11,64 @@ import styles from '../Select.module.scss';
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 const selectCSS = compile(resolve(process.cwd(), 'src/components/ui/Select.module.scss')).css;
+
+it('calls onOpen once per opening, not when callbacks or options change', async () => {
+  const container = document.createElement('div');
+  document.body.append(container);
+  const root = createRoot(container);
+  const first = vi.fn();
+  const next = vi.fn();
+  const onChange = vi.fn();
+  try {
+    const render = async (onOpen: () => void, label: string) => {
+      await act(async () => root.render(<StrictMode><Select value="a" options={[{ value: 'a', label }]} onChange={onChange} onOpen={onOpen} /></StrictMode>));
+    };
+    await render(first, 'Alpha');
+    expect(first).not.toHaveBeenCalled();
+    const trigger = container.querySelector<HTMLButtonElement>('button')!;
+    await act(async () => trigger.click());
+    expect(first).toHaveBeenCalledTimes(1);
+    await render(next, 'Updated Alpha');
+    expect(next).not.toHaveBeenCalled();
+    expect(document.querySelector('[role="option"]')?.textContent).toBe('Updated Alpha');
+    await act(async () => trigger.click());
+    await act(async () => trigger.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true })));
+    expect(next).toHaveBeenCalledTimes(1);
+    await act(async () => document.querySelector<HTMLButtonElement>('[role="option"]')!.click());
+    expect(onChange).toHaveBeenCalledExactlyOnceWith('a');
+    await act(async () => trigger.click());
+    expect(next).toHaveBeenCalledTimes(2);
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+  }
+});
+
+it('displays a matching fallback selection without adding it to the candidates', async () => {
+  const container = document.createElement('div');
+  document.body.append(container);
+  const root = createRoot(container);
+  const onChange = vi.fn();
+  try {
+    await act(async () => root.render(<Select value="saved" options={[{ value: '', label: 'All' }]} selectedOption={{ value: 'saved', label: 'Saved key' }} onChange={onChange} />));
+    const trigger = container.querySelector<HTMLButtonElement>('button')!;
+    expect(trigger.textContent).toContain('Saved key');
+    await act(async () => trigger.click());
+    expect(Array.from(document.querySelectorAll('[role="option"]'), (node) => node.textContent)).toEqual(['All']);
+    await act(async () => trigger.click());
+    await act(async () => root.render(<Select value="saved" options={[{ value: 'saved', label: 'Fresh label' }]} selectedOption={{ value: 'saved', label: 'Saved key' }} onChange={onChange} />));
+    expect(trigger.textContent).toContain('Fresh label');
+    await act(async () => root.render(<Select value="saved" options={[]} selectedOption={{ value: 'other', label: 'Wrong key' }} placeholder="Choose" onChange={onChange} />));
+    expect(trigger.textContent).toContain('Choose');
+    expect(trigger.textContent).not.toContain('Wrong key');
+    await act(async () => root.render(<Select value="saved" options={[]} placeholder="Choose" onChange={onChange} />));
+    expect(trigger.textContent).toContain('Choose');
+    expect(onChange).not.toHaveBeenCalled();
+  } finally {
+    await act(async () => root.unmount());
+    container.remove();
+  }
+});
 
 it('renders disabled selects with the shared inert control state', async () => {
   const container = document.createElement('div');

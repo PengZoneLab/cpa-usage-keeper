@@ -244,6 +244,22 @@ describe('UsagePage top API Key request event filter', () => {
     expect(api.exportUsageEvents).toHaveBeenLastCalledWith(expect.objectContaining({ range: 'yesterday' }), 'json', expect.objectContaining({ apiKeyId: '11' }));
   });
 
+  it('keeps a selected registered key when it has no events in the current scope', async () => {
+    api.fetchCpaApiKeyOptions.mockImplementation(async (_signal, request) => request ? { options: [keyOptions.options[1]] } : keyOptions);
+    await render();
+    expect(topKey().textContent).toContain('Overview key');
+    expect(api.fetchUsageEvents.mock.lastCall![2].apiKeyId).toBe('11');
+    await act(async () => topKey().click());
+    const options = Array.from(document.querySelectorAll('[role="option"]')).map((node) => node.textContent);
+    expect(options).toContain('Events key');
+    expect(options).not.toContain('Overview key');
+    expect(options).not.toContain('Other key');
+    expect(localStorage.getItem(TOP_KEY_STORAGE)).toBe('11');
+    const scopedCalls = api.fetchCpaApiKeyOptions.mock.calls.filter((call) => call[1]);
+    expect(scopedCalls).toHaveLength(2);
+    expect(scopedCalls[1][1]).toEqual({ scope: 'request-events', range: expect.objectContaining({ range: '24h' }) });
+  });
+
   it('isolates Overview and Realtime requests while retaining the shared API Key filter', async () => {
     await render();
     await choose(topKey(), 'Other key');
@@ -251,18 +267,21 @@ describe('UsagePage top API Key request event filter', () => {
       await act(async () => container.querySelector<HTMLAnchorElement>(`[data-dashboard-toolbar] a[href="${path}"]`)!.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 })));
     };
     await navigate('/overview');
+    expect(api.fetchCpaApiKeyOptions.mock.lastCall![1]).toMatchObject({ scope: 'overview', range: { range: '24h' } });
     expect(api.fetchUsageOverview).toHaveBeenLastCalledWith(expect.anything(), expect.any(AbortSignal), '33');
     expect(api.fetchUsageOverviewRealtime).not.toHaveBeenCalled();
     expect(api.fetchUsageActivity).toHaveBeenLastCalledWith(expect.objectContaining({ apiKeyId: '33' }));
     const overviewCalls = api.fetchUsageOverview.mock.calls.length;
     const activityCalls = api.fetchUsageActivity.mock.calls.length;
     await navigate('/realtime');
+    expect(api.fetchCpaApiKeyOptions.mock.lastCall![1]).toEqual({ scope: 'realtime', window: '15m' });
     expect(api.fetchUsageOverviewRealtime).toHaveBeenLastCalledWith(expect.objectContaining({ apiKeyId: '33' }));
     expect(container.querySelector('[data-time-range-trigger]')).toBeNull();
     await act(async () => { void triggerHeaderRefresh(); });
     expect(api.fetchUsageOverview.mock.calls.length).toBe(overviewCalls);
     expect(api.fetchUsageActivity.mock.calls.length).toBe(activityCalls);
     await navigate('/analysis');
+    expect(api.fetchCpaApiKeyOptions.mock.lastCall![1]).toMatchObject({ scope: 'analysis', range: { range: '24h' } });
     expect(api.fetchAnalysis).toHaveBeenLastCalledWith(expect.anything(), expect.any(AbortSignal), '33');
     expect(api.fetchAnalysisLatency).toHaveBeenLastCalledWith(expect.anything(), expect.any(AbortSignal), '33');
     await navigate('/request-events');
