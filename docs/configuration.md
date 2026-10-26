@@ -17,6 +17,15 @@ See the README for connection, login, and common settings, and [`.env.example`](
 
 See the [README](../README.md#nginx-reverse-proxy) for an Nginx example.
 
+## Credentials Quota Refresh
+
+Configure scheduled refresh from the gear button in the Credentials inspection dialog. Settings are stored in local SQLite and do not require the page to stay open. These advanced settings are optional:
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `QUOTA_REFRESH_WORKER_LIMIT` | `10` | Maximum Credentials quota refresh concurrency for manual and scheduled refresh, capped at `100` |
+| `QUOTA_UPSTREAM_RESPONSES_ENABLED` | `false` | Cache each credential's latest raw upstream quota responses and return them through quota task/cache APIs for browser Network debugging; responses may contain account data |
+
 ## Redis Queue Advanced Settings
 
 | Variable | Default | Description |

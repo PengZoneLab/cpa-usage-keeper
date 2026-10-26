@@ -478,10 +478,7 @@ Optional OIDC administrator login is disabled by default; see the [OIDC setup gu
 
 Scheduled Credentials quota refresh is configured from the gear button in the Credentials inspection dialog. The setting is stored in the local SQLite database and does not require the page to stay open.
 
-| Variable | Required | Default | Description |
-| --- | --- | --- | --- |
-| `QUOTA_REFRESH_WORKER_LIMIT` | No | `10` | Maximum Credentials quota refresh concurrency for manual and scheduled refresh, capped at `100` |
-| `QUOTA_UPSTREAM_RESPONSES_ENABLED` | No | `false` | Cache each credential's latest raw upstream quota responses and return them through quota task/cache APIs for browser Network debugging; responses may contain account data |
+See [advanced configuration](./docs/configuration.md#credentials-quota-refresh) for concurrency and debugging settings.
 
 ### Redis Queue Advanced Settings
 

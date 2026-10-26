@@ -17,6 +17,15 @@
 
 Nginx 示例见 [README](../README.zh.md#nginx-反向代理)。
 
+## Credentials 限额刷新
+
+定时刷新在 Credentials 巡检弹窗的小齿轮中配置，设置保存在本地 SQLite，无需保持页面打开。以下高级配置均可选：
+
+| 变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `QUOTA_REFRESH_WORKER_LIMIT` | `10` | 手动刷新和定时刷新共用的 Credentials 限额刷新队列最大并发数，最大 `100` |
+| `QUOTA_UPSTREAM_RESPONSES_ENABLED` | `false` | 缓存每个凭证最近一次限额查询的原始上游响应，并通过 quota task/cache API 返回，供浏览器 Network 面板排障；响应可能包含账号数据 |
+
 ## Redis 队列高级配置
 
 | 变量 | 默认值 | 说明 |
