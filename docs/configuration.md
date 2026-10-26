@@ -2,60 +2,70 @@
 
 [Back to README](../README.md) · [简体中文](./configuration.zh.md)
 
-See the README for connection, login, and common settings, and [`.env.example`](../.env.example) for the complete variable template.
+See the README's [configuration section](../README.md#configuration) for common settings and [`.env.example`](../.env.example) for the complete variable template.
 
 ## Web Access And Reverse Proxy
 
-- The `--host` startup flag overrides `APP_HOST`. When neither is set, Keeper listens on all available network interfaces.
-- For Docker/Compose, keep `APP_HOST` empty. To restrict access to the Docker host, publish the port as `127.0.0.1:8080:8080`.
-- `APP_BASE_PATH` must be empty or start with `/`; `/cpa/` is normalized to `/cpa`. Reverse proxies must preserve this prefix.
-- `CPA_BASE_URL` is the server-side CPA address and may use a private host or Docker service name.
-- `CPA_PUBLIC_URL` is the public CPA address used by browsers. It controls the "Back to CPA" link and cross-origin CPAMC frame trust. Leave it empty for same-origin `/management.html`, or set it when domains, ports, or paths differ.
-- For cross-origin CPAMC embedding, `CPA_PUBLIC_URL` must be a complete `http://` or `https://` URL with a host. Relative paths affect navigation only.
-- Keeper trusts `X-Forwarded-For` only from local loopback and `TRUSTED_PROXY_CIDRS`. Direct clients cannot change their login-rate-limit source with this header. Configure only the exact proxy address or network; universal CIDRs are rejected.
-- Local Nginx requires no extra proxy trust settings. If the proxy connects from a container or another host, or a CDN such as Cloudflare sits in front of it, configure the actual proxy networks rather than copying an example range.
+### Listening And Base Paths
 
-See the [README](../README.md#nginx-reverse-proxy) for an Nginx example.
+`--host` overrides `APP_HOST`; when neither is set, Keeper listens on all available interfaces. Keep `APP_HOST` empty for Docker/Compose and use `127.0.0.1:8080:8080` port mapping for host-only access.
+
+`APP_BASE_PATH` must be empty or start with `/`; trailing `/` is removed. Reverse proxies must preserve the prefix; see the [Nginx example](../README.md#nginx-reverse-proxy).
+
+### CPA Addresses
+
+- `CPA_BASE_URL`: used by the Keeper server; private addresses and Docker service names are valid.
+- `CPA_PUBLIC_URL`: used by browsers for "Back to CPA" and cross-origin embedding. Leave it empty for same-origin CPA at `/management.html`; set it when domains, ports, or paths differ.
+- Cross-origin embedding requires a complete HTTP/HTTPS URL with a host in `CPA_PUBLIC_URL`; relative paths affect navigation only.
+
+### Proxy Trust
+
+Only local loopback and proxies in `TRUSTED_PROXY_CIDRS` can provide trusted `X-Forwarded-For` values. Local Nginx needs no extra settings; configure actual proxy networks for containers, remote proxies, or CDNs. Do not copy example networks or trust all sources; universal CIDRs are rejected.
+
+## Optional Compose Environment File
+
+The combined CPA + Keeper template can also load settings from `./keeper/.env`; a missing file does not prevent startup. `environment` overrides `env_file`: remove corresponding entries, including empty placeholders, from Compose's `environment` to use the file's values.
 
 ## Built-In HTTPS
 
-Usually, HTTPS should be terminated at nginx, Caddy, or another reverse proxy. Set `TLS_ENABLED=true` only when the Keeper process must serve HTTPS directly, and provide `TLS_CERT_FILE` and `TLS_KEY_FILE`; relative paths are resolved against the `.env` file directory.
+Usually, terminate HTTPS at a reverse proxy. Use these settings when Keeper must serve HTTPS directly; relative certificate and key paths resolve against the `.env` file directory.
 
-| Variable | Required | Default | Description |
-| --- | --- | --- | --- |
-| `TLS_ENABLED` | No | `false` | Let Keeper serve HTTPS/TLS directly |
-| `TLS_CERT_FILE` | Required when TLS is enabled | - | HTTPS certificate file path |
-| `TLS_KEY_FILE` | Required when TLS is enabled | - | HTTPS private key file path |
+| Variable | Default | Description |
+| --- | --- | --- |
+| `TLS_ENABLED` | `false` | Set to `true` to enable built-in HTTPS |
+| `TLS_CERT_FILE` | Empty | Required when enabled; certificate file path |
+| `TLS_KEY_FILE` | Empty | Required when enabled; private key file path |
 
 ## Credentials Quota Refresh
 
-Configure scheduled refresh from the gear button in the Credentials inspection dialog. Settings are stored in local SQLite and do not require the page to stay open. These advanced settings are optional:
+Configure ordinary scheduled refresh in the Credentials inspection dialog. These optional settings adjust concurrency or enable debugging.
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `QUOTA_REFRESH_WORKER_LIMIT` | `10` | Maximum Credentials quota refresh concurrency for manual and scheduled refresh, capped at `100` |
-| `QUOTA_UPSTREAM_RESPONSES_ENABLED` | `false` | Cache each credential's latest raw upstream quota responses and return them through quota task/cache APIs for browser Network debugging; responses may contain account data |
+| `QUOTA_REFRESH_WORKER_LIMIT` | `10` | Shared concurrency limit for manual and scheduled refresh, capped at `100` |
+| `QUOTA_UPSTREAM_RESPONSES_ENABLED` | `false` | Cache each credential's latest raw quota responses for browser Network debugging; may contain account data |
 
 ## Redis Queue Advanced Settings
 
+All variables below are optional.
+
 | Variable | Default | Description |
 | --- | --- | --- |
-| `REDIS_QUEUE_ADDR` | Derived from `CPA_BASE_URL` | An explicit value takes precedence. When empty, use the hostname and explicit port from `CPA_BASE_URL`, or `8317` if no port is specified. Set `host:port` for a separate address |
-| `REDIS_QUEUE_TLS` | `false` | Set to `true` to force TLS for the Redis queue; when no queue address is specified, TLS follows the protocol of `CPA_BASE_URL` by default. `false` does not override automatically inferred TLS settings. |
-| `REDIS_QUEUE_BATCH_SIZE` | `10000` | Maximum queue records per pull |
+| `REDIS_QUEUE_ADDR` | Derived from `CPA_BASE_URL` | An explicit value takes precedence. Otherwise, use the hostname and explicit port from `CPA_BASE_URL`, or `8317` if no port is specified. Set `host:port` for a separate address |
+| `REDIS_QUEUE_TLS` | `false` | `true` forces TLS; when no queue address is specified, TLS follows the `CPA_BASE_URL` protocol. `false` does not override automatically inferred TLS |
+| `REDIS_QUEUE_BATCH_SIZE` | `10000` | Maximum records per pull |
 | `REDIS_QUEUE_IDLE_INTERVAL` | `1s` | Empty queue check interval |
-
-All variables above are optional.
 
 ## Session And Message Retention
 
-- Login session hashes persist in SQLite until logout or `AUTH_SESSION_TTL` expiry.
-- CPAMC uses a separate embed session: an `HttpOnly` cookie when available, or a per-tab header token in browser session storage as a fallback.
-- Same-origin embedding works by default. For cross-origin embedding, set `CPA_PUBLIC_URL` to the public CPA/CPAMC origin used for `frame-ancestors`.
-- Redis inbox messages are retained through the current day after success or for 7 days after failure.
+`AUTH_SESSION_TTL` controls login session lifetime. See [OIDC sessions](./oidc.md#sessions-and-sign-out) for OIDC sign-out and revocation rules. Redis inbox messages are retained through the current day after success or for 7 days after failure.
 
 ## Storage And Log Details
 
-Keeper archives raw request records older than 90 local calendar days daily at 04:30 in the configured timezone. Archives are retained permanently by default. With `USAGE_RAW_RETENTION_DAYS>=90`, daily maintenance deletes expired archived records in batches after archiving, using the request timestamp and local calendar days in the configured timezone. The 90-day hot-table window remains unchanged. Normal pages do not directly query archived records; historical aggregates and backups keep their own retention policies. Deleted raw records cannot support later historical recalculation. Deletion may not immediately shrink the SQLite file: freed space can be reused and is reclaimed by the existing conditional compaction policy.
+See the README's [storage, logs, and backups](../README.md#storage-logs-and-backups) section for common variables.
 
-When file logging is enabled, `cpa-usage-keeper-YYYY-MM-DD.log` contains all emitted levels. Error, fatal, and panic entries are also copied to `cpa-usage-keeper-error-YYYY-MM-DD.log`, which keeps the previous 30 local calendar dates plus the current date.
+- **Archiving:** Every day at 04:30 in the configured timezone, Keeper archives raw requests older than 90 local calendar days. Normal pages do not query archive details directly.
+- **Deletion:** Archives are retained indefinitely by default. With `USAGE_RAW_RETENTION_DAYS>=90`, expired archives are removed by request date without changing the recent 90-day window. Historical aggregates and backups have separate retention policies.
+- **Impact:** Deleted raw records cannot support historical recalculation, and the SQLite file may not immediately shrink.
+
+File logs use `cpa-usage-keeper-YYYY-MM-DD.log`. Error, fatal, and panic entries also go to `cpa-usage-keeper-error-YYYY-MM-DD.log`; error logs retain 30 previous local calendar dates plus the current date.
