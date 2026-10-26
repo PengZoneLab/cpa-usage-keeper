@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"cpa-usage-keeper/internal/config"
 	"cpa-usage-keeper/internal/entities"
 	"cpa-usage-keeper/internal/repository"
 	repositorydto "cpa-usage-keeper/internal/repository/dto"
@@ -163,15 +162,7 @@ func assertQuotaEfficiencySegmentProjection(t *testing.T, statements []quotaEffi
 }
 
 func BenchmarkCodexQuotaEfficiencyHistoryCoveredCycles(b *testing.B) {
-	db, err := repository.OpenDatabase(config.Config{SQLitePath: filepath.Join(b.TempDir(), "quota-covered.db")})
-	if err != nil {
-		b.Fatal(err)
-	}
-	sqlDB, err := db.DB()
-	if err != nil {
-		b.Fatal(err)
-	}
-	b.Cleanup(func() { _ = sqlDB.Close() })
+	db := openQuotaEfficiencyBenchmarkDatabase(b, "quota-covered.db")
 	now := time.Date(2026, 8, 31, 12, 0, 0, 0, time.UTC)
 	start := now.Add(-30 * 24 * time.Hour)
 	returnedIDs := make(map[int64]bool, 72)
@@ -182,11 +173,7 @@ func BenchmarkCodexQuotaEfficiencyHistoryCoveredCycles(b *testing.B) {
 			{duration: 10 * time.Hour},
 		} {
 			cycleStart := groupStart.Add(window.offset)
-			segments := make([]codexQuotaEfficiencySegmentSeed, 101)
-			for point := range segments {
-				observed := cycleStart.Add(time.Duration(point) * (window.duration / 100))
-				segments[point] = codexQuotaEfficiencySegmentSeed{remaining: 100 - point, first: observed, last: observed}
-			}
+			segments := quotaEfficiencyBenchmarkSegments(cycleStart, window.duration)
 			cycle := seedCodexQuotaEfficiencyCycle(b, db, "codex-auth", cycleStart, cycleStart.Add(window.duration), segments)
 			if window.offset == 0 {
 				returnedIDs[cycle.ID] = true
@@ -194,14 +181,9 @@ func BenchmarkCodexQuotaEfficiencyHistoryCoveredCycles(b *testing.B) {
 		}
 	}
 	const eventCount = 30_000
-	for offset := 0; offset < eventCount; offset += 100 {
-		events := make([]entities.UsageEvent, 0, 100)
-		for index := offset; index < min(offset+100, eventCount); index++ {
-			at := start.Add(time.Duration(index) * (30 * 24 * time.Hour / eventCount))
-			events = append(events, usageEventForQuotaEfficiency(fmt.Sprintf("covered-event-%d", index), "oauth", "codex-auth", at, 1000))
-		}
-		seedCodexQuotaEfficiencyUsage(b, db, events...)
-	}
+	seedQuotaEfficiencyBenchmarkEvents(b, db, start, eventCount, func(index int, at time.Time) entities.UsageEvent {
+		return usageEventForQuotaEfficiency(fmt.Sprintf("covered-event-%d", index), "oauth", "codex-auth", at, 1000)
+	})
 	query := repositorydto.CodexQuotaEfficiencyQuery{AuthIndex: "codex-auth", Now: now, RangeStart: start}
 	var statements []quotaEfficiencyProjectionStatement
 	warmupDB := db.Session(&gorm.Session{Logger: quotaEfficiencyProjectionLogger{

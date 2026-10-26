@@ -12,6 +12,8 @@ import (
 	"cpa-usage-keeper/internal/entities"
 	"cpa-usage-keeper/internal/repository"
 	repositorydto "cpa-usage-keeper/internal/repository/dto"
+
+	"gorm.io/gorm"
 )
 
 func TestCodexQuotaEfficiencyStoredCostIgnoresPricingDimensions(t *testing.T) {
@@ -143,39 +145,22 @@ func BenchmarkCodexQuotaEfficiencyHistory(b *testing.B) {
 		{name: "100k_stored_cost", events: 100_000},
 	} {
 		b.Run(testCase.name, func(b *testing.B) {
-			db, err := repository.OpenDatabase(config.Config{SQLitePath: filepath.Join(b.TempDir(), "quota.db")})
-			if err != nil {
-				b.Fatal(err)
-			}
-			sqlDB, err := db.DB()
-			if err != nil {
-				b.Fatal(err)
-			}
-			b.Cleanup(func() { _ = sqlDB.Close() })
+			db := openQuotaEfficiencyBenchmarkDatabase(b, "quota.db")
 			now := time.Date(2026, 8, 31, 12, 0, 0, 0, time.UTC)
 			start := now.Add(-30 * 24 * time.Hour)
 			for cycleIndex := 0; cycleIndex < 144; cycleIndex++ {
 				cycleStart := start.Add(time.Duration(cycleIndex) * 5 * time.Hour)
-				segments := make([]codexQuotaEfficiencySegmentSeed, 101)
-				for point := range segments {
-					observed := cycleStart.Add(time.Duration(point) * 3 * time.Minute)
-					segments[point] = codexQuotaEfficiencySegmentSeed{remaining: 100 - point, first: observed, last: observed}
-				}
+				segments := quotaEfficiencyBenchmarkSegments(cycleStart, 5*time.Hour)
 				seedCodexQuotaEfficiencyCycle(b, db, "codex-auth", cycleStart, cycleStart.Add(5*time.Hour), segments)
 			}
-			for offset := 0; offset < testCase.events; offset += 100 {
-				events := make([]entities.UsageEvent, 0, 100)
-				for index := offset; index < min(offset+100, testCase.events); index++ {
-					at := start.Add(time.Duration(index) * (30 * 24 * time.Hour / time.Duration(testCase.events)))
-					event := usageEventForQuotaEfficiency(fmt.Sprintf("event-%d", index), "oauth", "codex-auth", at, 1000)
-					event.APIGroupKey = fmt.Sprintf("group-%d", index%7)
-					event.Endpoint = fmt.Sprintf("/endpoint-%d", index%3)
-					event.ServiceTier = []string{"standard", "priority"}[index%2]
-					event.ReasoningEffort = []string{"low", "medium", "high"}[index%3]
-					events = append(events, event)
-				}
-				seedCodexQuotaEfficiencyUsage(b, db, events...)
-			}
+			seedQuotaEfficiencyBenchmarkEvents(b, db, start, testCase.events, func(index int, at time.Time) entities.UsageEvent {
+				event := usageEventForQuotaEfficiency(fmt.Sprintf("event-%d", index), "oauth", "codex-auth", at, 1000)
+				event.APIGroupKey = fmt.Sprintf("group-%d", index%7)
+				event.Endpoint = fmt.Sprintf("/endpoint-%d", index%3)
+				event.ServiceTier = []string{"standard", "priority"}[index%2]
+				event.ReasoningEffort = []string{"low", "medium", "high"}[index%3]
+				return event
+			})
 			query := repositorydto.CodexQuotaEfficiencyQuery{AuthIndex: "codex-auth", Now: now, RangeStart: start}
 			b.ReportAllocs()
 			b.ResetTimer()
@@ -195,5 +180,40 @@ func BenchmarkCodexQuotaEfficiencyHistory(b *testing.B) {
 				}
 			}
 		})
+	}
+}
+
+func openQuotaEfficiencyBenchmarkDatabase(b *testing.B, filename string) *gorm.DB {
+	b.Helper()
+	db, err := repository.OpenDatabase(config.Config{SQLitePath: filepath.Join(b.TempDir(), filename)})
+	if err != nil {
+		b.Fatal(err)
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		b.Fatal(err)
+	}
+	b.Cleanup(func() { _ = sqlDB.Close() })
+	return db
+}
+
+func quotaEfficiencyBenchmarkSegments(start time.Time, duration time.Duration) []codexQuotaEfficiencySegmentSeed {
+	segments := make([]codexQuotaEfficiencySegmentSeed, 101)
+	for point := range segments {
+		observed := start.Add(time.Duration(point) * (duration / 100))
+		segments[point] = codexQuotaEfficiencySegmentSeed{remaining: 100 - point, first: observed, last: observed}
+	}
+	return segments
+}
+
+func seedQuotaEfficiencyBenchmarkEvents(b *testing.B, db *gorm.DB, start time.Time, count int, eventAt func(int, time.Time) entities.UsageEvent) {
+	b.Helper()
+	for offset := 0; offset < count; offset += 100 {
+		events := make([]entities.UsageEvent, 0, 100)
+		for index := offset; index < min(offset+100, count); index++ {
+			at := start.Add(time.Duration(index) * (30 * 24 * time.Hour / time.Duration(count)))
+			events = append(events, eventAt(index, at))
+		}
+		seedCodexQuotaEfficiencyUsage(b, db, events...)
 	}
 }
