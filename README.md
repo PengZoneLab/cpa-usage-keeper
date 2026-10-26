@@ -505,13 +505,7 @@ Keeper backs up the database before migration. If it fails, follow the [upgrade 
 
 ### Built-In HTTPS
 
-| Variable | Required | Default | Description |
-| --- | --- | --- | --- |
-| `TLS_ENABLED` | No | `false` | Let Keeper serve HTTPS/TLS directly |
-| `TLS_CERT_FILE` | Required when TLS is enabled | - | HTTPS certificate file path |
-| `TLS_KEY_FILE` | Required when TLS is enabled | - | HTTPS private key file path |
-
-Usually, HTTPS should be terminated at nginx, Caddy, or another reverse proxy. Set `TLS_ENABLED=true` only when the Keeper process must serve HTTPS directly, and provide `TLS_CERT_FILE` and `TLS_KEY_FILE`; relative paths are resolved against the `.env` file directory.
+Prefer HTTPS termination at nginx, Caddy, or another reverse proxy. To serve HTTPS directly from Keeper, see [built-in HTTPS configuration](./docs/configuration.md#built-in-https).
 
 Security and data notes:
 

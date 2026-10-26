@@ -505,13 +505,7 @@ Credentials 定时限额刷新在 Credentials 巡检弹窗的小齿轮中配置�
 
 ### 内置 HTTPS
 
-| 变量 | 必填 | 默认值 | 说明 |
-| --- | --- | --- | --- |
-| `TLS_ENABLED` | 否 | `false` | 是否让 Keeper 自己启用 HTTPS/TLS |
-| `TLS_CERT_FILE` | 启用 TLS 时必填 | - | HTTPS 证书文件路径 |
-| `TLS_KEY_FILE` | 启用 TLS 时必填 | - | HTTPS 私钥文件路径 |
-
-通常建议在 nginx、Caddy 等反向代理层处理 HTTPS。只有需要 Keeper 进程直接提供 HTTPS 时，才设置 `TLS_ENABLED=true`，并填写 `TLS_CERT_FILE` 和 `TLS_KEY_FILE`；相对路径会按 `.env` 所在目录解析。
+通常建议由 nginx、Caddy 等反向代理提供 HTTPS；需要 Keeper 直接提供 HTTPS 时，参阅[内置 HTTPS 配置](./docs/configuration.zh.md#内置-https)。
 
 安全与数据说明：
 

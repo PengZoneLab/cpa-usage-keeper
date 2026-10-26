@@ -17,6 +17,16 @@ See the README for connection, login, and common settings, and [`.env.example`](
 
 See the [README](../README.md#nginx-reverse-proxy) for an Nginx example.
 
+## Built-In HTTPS
+
+Usually, HTTPS should be terminated at nginx, Caddy, or another reverse proxy. Set `TLS_ENABLED=true` only when the Keeper process must serve HTTPS directly, and provide `TLS_CERT_FILE` and `TLS_KEY_FILE`; relative paths are resolved against the `.env` file directory.
+
+| Variable | Required | Default | Description |
+| --- | --- | --- | --- |
+| `TLS_ENABLED` | No | `false` | Let Keeper serve HTTPS/TLS directly |
+| `TLS_CERT_FILE` | Required when TLS is enabled | - | HTTPS certificate file path |
+| `TLS_KEY_FILE` | Required when TLS is enabled | - | HTTPS private key file path |
+
 ## Credentials Quota Refresh
 
 Configure scheduled refresh from the gear button in the Credentials inspection dialog. Settings are stored in local SQLite and do not require the page to stay open. These advanced settings are optional:
