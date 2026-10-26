@@ -449,14 +449,7 @@ For a first deployment, set the CPA address, CPA management key, and Keeper logi
 | `CPA_PUBLIC_URL` | No | current browser origin root | Public CPA URL for the "Back to CPA" link and CPAMC frame trust |
 | `TRUSTED_PROXY_CIDRS` | No | local loopback only | Additional reverse-proxy CIDRs allowed to provide `X-Forwarded-For`, separated by commas |
 
-- The `--host` startup flag overrides `APP_HOST`. When neither is set, Keeper preserves its existing behavior and listens on all available network interfaces.
-- For Docker/Compose, keep `APP_HOST` empty. To restrict access to the Docker host, publish the port as `127.0.0.1:8080:8080`.
-- `APP_BASE_PATH` must be empty or start with `/`; `/cpa/` is normalized to `/cpa`.
-- `CPA_BASE_URL` is the server-side CPA address and may use a private host or Docker service name.
-- `CPA_PUBLIC_URL` controls browser navigation and cross-origin CPAMC frame trust. Leave it empty for same-origin `/management.html`, or set an explicit public CPA URL when domains, ports, or paths differ.
-- Keeper trusts `X-Forwarded-For` only from local loopback and `TRUSTED_PROXY_CIDRS`. Direct clients cannot change their login-rate-limit source with this header. Configure only the exact proxy address or network; universal CIDRs are rejected.
-
-For cross-origin CPAMC embedding, `CPA_PUBLIC_URL` must be a complete `http://` or `https://` URL with a host. Relative paths affect navigation only.
+For Docker/Compose, keep `APP_HOST` empty; publish `127.0.0.1:8080:8080` for host-only access. Set a browser-accessible `CPA_PUBLIC_URL` when CPA and Keeper use different domains, ports, or paths. See [advanced configuration](./docs/configuration.md#web-access-and-reverse-proxy) for details and the reverse-proxy example below.
 
 ### Login Protection
 
@@ -558,13 +551,7 @@ location /cpa/ {
 }
 ```
 
-The loopback Nginx configuration above works without additional Keeper settings. If the reverse proxy reaches Keeper from a container or another host, or a CDN such as Cloudflare sits in front of the reverse proxy, add the exact proxy networks, for example `TRUSTED_PROXY_CIDRS=172.18.0.0/16`.
-
-When CPA and Keeper share a browser origin, `CPA_PUBLIC_URL` can be omitted and "Back to CPA" uses `/management.html`. For another domain, port, or path, set the public CPA URL:
-
-```env
-CPA_PUBLIC_URL=https://cpa.example.com
-```
+Local Nginx needs no extra proxy trust settings. For containers, remote proxies, or CDNs, configure only the actual proxy networks in `TRUSTED_PROXY_CIDRS`; never trust all sources.
 
 ## License
 
