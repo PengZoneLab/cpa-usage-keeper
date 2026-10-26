@@ -2,7 +2,7 @@
 
 [Back to README](../README.md) · [简体中文](./development.zh.md)
 
-See the developer reference in the README for project structure and local setup.
+See the README's [project structure](../README.md#project-structure) and [local development](../README.md#local-development) sections for layout and setup.
 
 ## Tests
 
@@ -24,9 +24,18 @@ npm --prefix ./web run build
 
 ## Chart time handling
 
-- Use the response/configured timezone. Calendar days use `internal/timeutil.CivilDate` and `DayBounds`; rolling windows use elapsed durations. A calendar day is not always 24 hours.
-- Read existing rollups through the repository bucket adapters. Overview and Latency have different hourly anchors; Activity retains its existing 364-block grid and stored ends. Query fixes must not change write buckets or repartition stored aggregates.
-- Reuse `internal/repository/usage_event_time_read.go` for raw-event time predicates and instant filtering. Use bounded segments for queries and the open-ended reader for recent-cache startup/reload; keep projections and lifecycle logic in callers.
-- Keep bucket identity as an instant or full date, never a formatted clock label. Sort timestamps by instant; use actual full-day minutes for day-bucket rates.
-- Reuse `web/src/utils/usage/timeLabels.ts` for timezone parts and repeated-clock disambiguation. Preserve each chart's locale, precision, fallback and empty-point rules; add offsets only to ambiguous local clocks.
-- Test ordinary Shanghai dates alongside DST gaps/folds, including a browser timezone different from the response. Preserve existing chart styles and lifecycle behavior.
+### Principles
+
+- Use the response or configured timezone. Calendar days are not always 24 hours; rolling windows use elapsed durations, and daily rates use the actual minutes in the calendar day.
+- Identify buckets by an instant or full date and sort by instant. Formatted clock labels are for display only.
+- Query fixes must not change stored aggregation boundaries. Preserve Overview and Latency's different hourly anchors, plus Activity's 364-block grid and stored bucket ends, to avoid changing the meaning of historical data.
+
+### Shared Code
+
+- Calendar-day calculations: `internal/timeutil.CivilDate` and `DayBounds`. Read aggregates through repository bucket adapters.
+- Raw-event filtering: `internal/repository/usage_event_time_read.go`. Use bounded segments for ordinary queries and the open-ended reader for recent-cache startup/reload; callers retain field selection and cache lifecycle handling.
+- Frontend labels: `web/src/utils/usage/timeLabels.ts`. Add timezone offsets only to repeated clocks during DST folds, preserving locale, precision, fallback, and empty-point rules.
+
+### Validation
+
+Cover ordinary Shanghai dates, DST gaps and folds, and browser timezones that differ from the response timezone. Confirm that chart styles and lifecycle behavior remain unchanged.
