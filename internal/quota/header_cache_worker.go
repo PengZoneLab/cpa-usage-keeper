@@ -965,6 +965,7 @@ func mergeUsageHeaderQuotaRows(existing []QuotaRow, header []QuotaRow) []QuotaRo
 	headerByKey := make(map[string]QuotaRow, len(header))
 	// headerOrder 保留 header 新行的顺序，方便最后追加旧 cache 没有的行。
 	headerOrder := make([]string, 0, len(header))
+	var mainLimitReached *bool
 	// 先遍历 header rows 建索引。
 	for _, row := range header {
 		// 空 key 无法稳定合并，直接丢弃。
@@ -977,6 +978,9 @@ func mergeUsageHeaderQuotaRows(existing []QuotaRow, header []QuotaRow) []QuotaRo
 		}
 		// 同 key 多次出现时以后出现的 header row 为准。
 		headerByKey[row.Key] = row
+		if strings.HasPrefix(row.Key, "rate_limit.") && row.LimitReached != nil {
+			mainLimitReached = row.LimitReached
+		}
 	}
 	// merged 预分配旧行和 header 行容量，减少 append 扩容。
 	merged := make([]QuotaRow, 0, len(existing)+len(header))
@@ -1005,6 +1009,14 @@ func mergeUsageHeaderQuotaRows(existing []QuotaRow, header []QuotaRow) []QuotaRo
 		}
 		// 追加 header 新增的 quota row。
 		merged = append(merged, headerByKey[key])
+	}
+	// 主额度标记属于整组；缺失窗口只同步明确标记，保留用量，且不影响 Additional。
+	if mainLimitReached != nil {
+		for index := range merged {
+			if strings.HasPrefix(merged[index].Key, "rate_limit.") {
+				merged[index].LimitReached = mainLimitReached
+			}
+		}
 	}
 	// 返回稳定顺序的合并结果。
 	return merged

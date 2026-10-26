@@ -487,12 +487,15 @@ func TestApplyUsageHeaderSnapshotMergesProgressWithManualAuthoritativeFields(t *
 
 func TestUsageHeaderLimitReachedUpdatesCacheOnlyWhenPresent(t *testing.T) {
 	for _, tc := range []struct {
-		name   string
-		header string
-		cached bool
-		want   bool
+		name        string
+		header      string
+		cached      bool
+		want        bool
+		primaryOnly bool
 	}{
 		{name: "clear", header: "false", cached: true, want: false},
+		{name: "clear_primary_only", header: "false", cached: true, want: false, primaryOnly: true},
+		{name: "set_primary_only", header: "true", cached: false, want: true, primaryOnly: true},
 		{name: "set", header: "true", cached: false, want: true},
 		{name: "missing", cached: true, want: true},
 		{name: "invalid", header: "invalid", cached: true, want: true},
@@ -503,19 +506,22 @@ func TestUsageHeaderLimitReachedUpdatesCacheOnlyWhenPresent(t *testing.T) {
 			service := NewServiceWithRegistry(db, NewProviderRegistry(nil))
 			defer service.StopRefreshTasks()
 			base := time.Date(2026, 6, 22, 10, 0, 0, 0, time.UTC)
+			secondaryResetAt := base.Add(7 * 24 * time.Hour).Format(time.RFC3339)
 			refreshTasks(service)["codex-auth"] = &RefreshTaskRecord{
 				AuthIndex: "codex-auth", Type: "codex", Status: RefreshTaskStatusCompleted,
 				Source: RefreshSourceManual, RefreshedAt: base,
 				Quota: &CheckResponse{Quota: []QuotaRow{
 					{Key: "rate_limit.primary_window", LimitReached: boolPtr(tc.cached)},
-					{Key: "rate_limit.secondary_window", LimitReached: boolPtr(tc.cached)},
+					{Key: "rate_limit.secondary_window", LimitReached: boolPtr(tc.cached), UsedPercent: floatPtr(3), ResetAt: secondaryResetAt},
 					{Key: "additional_rate_limits.Spark.primary_window", LimitReached: boolPtr(tc.cached)},
 				}},
 			}
 			headers := codexUsageHeader("17")
-			headers.Set("X-Codex-Secondary-Used-Percent", "3")
-			headers.Set("X-Codex-Secondary-Window-Minutes", "10080")
-			headers.Set("X-Codex-Secondary-Reset-At", headers.Get("X-Codex-Primary-Reset-At"))
+			if !tc.primaryOnly {
+				headers.Set("X-Codex-Secondary-Used-Percent", "3")
+				headers.Set("X-Codex-Secondary-Window-Minutes", "10080")
+				headers.Set("X-Codex-Secondary-Reset-At", headers.Get("X-Codex-Primary-Reset-At"))
+			}
 			headers.Set("X-Codex-Bengalfox-Limit-Name", "Spark")
 			headers.Set("X-Codex-Bengalfox-Primary-Used-Percent", "2")
 			headers.Set("X-Codex-Bengalfox-Primary-Window-Minutes", "300")
@@ -541,6 +547,13 @@ func TestUsageHeaderLimitReachedUpdatesCacheOnlyWhenPresent(t *testing.T) {
 				}
 			}
 			assertFloatField(t, task.Quota.Quota[0].UsedPercent, 17, "updated primary usedPercent")
+			if tc.primaryOnly {
+				secondary := task.Quota.Quota[1]
+				assertFloatField(t, secondary.UsedPercent, 3, "preserved secondary usedPercent")
+				if secondary.ResetAt != secondaryResetAt {
+					t.Fatalf("missing secondary window must keep its reset time, got %s", secondary.ResetAt)
+				}
+			}
 		})
 	}
 }
