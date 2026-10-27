@@ -406,11 +406,7 @@ Set `CPA_BASE_URL`, `CPA_MANAGEMENT_KEY`, and a private `LOGIN_PASSWORD` before 
 
 ## Configuration
 
-Copy the example config:
-
-```bash
-cp .env.example .env
-```
+Edit your existing `.env` or Compose `environment`, depending on the deployment method; do not overwrite existing settings with a fresh template.
 
 For a first deployment, set the CPA address, CPA management key, and Keeper login password. Most other settings can keep their defaults. Read the relevant sections when you need a domain, HTTPS, or a base path.
 

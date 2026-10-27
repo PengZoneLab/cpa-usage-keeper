@@ -406,11 +406,7 @@ notepad .env
 
 ## 配置
 
-复制配置模板：
-
-```bash
-cp .env.example .env
-```
+按部署方式编辑现有 `.env` 或 Compose `environment`；不要重新复制或下载模板覆盖已有配置。
 
 首次部署先填写 CPA 地址、CPA 管理密钥和 Keeper 登录密码，其余配置通常保持默认。需要域名访问、HTTPS 或子路径时，再查看对应章节。
 
