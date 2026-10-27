@@ -47,7 +47,7 @@ A nonempty legacy `AUTH_OIDC_ALLOWED_USERS` prevents startup. Replace it with ac
 ## Networking And Troubleshooting
 
 - **Addresses and connectivity:** The issuer must exactly match Discovery and the ID Token's `iss`; do not substitute a container-internal address. Keeper must reach Discovery, Token, and JWKS endpoints; browsers must reach the authorization endpoint.
-- **HTTPS:** Use HTTPS for all related addresses. Explicit HTTP URLs are accepted but provide no transport encryption. Install internal CAs into the service's trusted certificate chain; HTTPS failures never trigger a downgrade or bypass verification.
+- **HTTPS:** Use HTTPS for all related addresses. HTTP is accepted but cannot prevent eavesdropping or tampering with Discovery/JWKS. Internal CAs must be trusted by the service; HTTPS failures never downgrade or bypass verification.
 - **Reverse proxies:** Preserve the public `Host` and `X-Forwarded-Proto` (or supply `X-Forwarded-Host`), and configure actual proxy networks in `TRUSTED_PROXY_CIDRS`. Filter callback query parameters from access logs to avoid recording authorization codes and state.
 - **Interrupted login:** Login attempts expire after five minutes. Click the login button again after a timeout or service restart.
 

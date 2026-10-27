@@ -47,7 +47,7 @@ AUTH_OIDC_ALLOWED_SUBJECTS='["user-123","user-456"]'
 ## 网络与排障
 
 - **地址与连通性：**Issuer 必须与 Discovery 和 ID Token 中的 `iss` 完全一致，不能随意替换为容器内网地址。Keeper 服务端须能访问 Discovery、Token 和 JWKS 端点，浏览器须能访问授权端点。
-- **HTTPS：**推荐所有相关地址使用 HTTPS。显式配置的 HTTP 地址可以使用，但不提供传输加密；内部 CA 需加入服务的受信任证书链，HTTPS 失败不会自动降级或跳过校验。
+- **HTTPS：**推荐所有相关地址使用 HTTPS。HTTP 虽可使用，但无法防止窃听或 Discovery/JWKS 被篡改。内部 CA 须受服务信任；HTTPS 失败不会降级或跳过校验。
 - **反向代理：**保留公开 `Host` 和 `X-Forwarded-Proto`（或提供 `X-Forwarded-Host`），并配置实际的 `TRUSTED_PROXY_CIDRS`。访问日志应过滤回调查询参数，避免记录授权码和 state。
 - **登录中断：**登录尝试五分钟过期；服务重启或超时后，重新点击登录按钮。
 
