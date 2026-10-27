@@ -6,7 +6,7 @@ OIDC 是可选的管理员登录方式，默认关闭，仅用于独立页面的
 
 ## 接入步骤
 
-1. 在身份平台注册带客户端密钥的服务器端客户端，使用 Authorization Code Flow 和 PKCE S256。
+1. 注册带密钥的服务器端客户端，启用 Authorization Code Flow、PKCE S256，并允许 Keeper 请求的 `openid profile email` scopes。
 2. 注册 Keeper 的公开回调地址：根路径部署为 `https://keeper.example.com/api/v1/auth/oidc/callback`；子路径为 `/keeper` 时，使用 `https://keeper.example.com/keeper/api/v1/auth/oidc/callback`。
 3. 填写下表配置，设置管理员准入策略，然后重启 Keeper。从与回调相同的公开 origin 打开 Keeper，选择 OIDC 登录。
 

@@ -6,7 +6,7 @@ OIDC is an optional administrator login method, disabled by default. It is avail
 
 ## Setup
 
-1. Register a confidential server-side client with a client secret at your identity provider, using Authorization Code Flow with PKCE S256.
+1. Register a confidential server-side client with a secret, enable Authorization Code Flow with PKCE S256, and allow Keeper's requested scopes: `openid profile email`.
 2. Register Keeper's public callback URL: `https://keeper.example.com/api/v1/auth/oidc/callback` for a root deployment, or `https://keeper.example.com/keeper/api/v1/auth/oidc/callback` for the `/keeper` base path.
 3. Configure the variables below and administrator access, then restart Keeper. Open Keeper at the same public origin as the callback and select OIDC login.
 
