@@ -28,7 +28,9 @@ The combined CPA + Keeper template can also load settings from `./keeper/.env`; 
 
 ## Built-In HTTPS
 
-Usually, terminate HTTPS at a reverse proxy. Use these settings when Keeper must serve HTTPS directly; relative certificate and key paths resolve against the `.env` file directory.
+Usually, terminate HTTPS at a reverse proxy. Use these settings when Keeper must serve HTTPS directly.
+
+For native deployments, relative certificate paths resolve against the environment file read by Keeper. With Compose, mount the certificate and key and use container paths; `env_file` does not mount files.
 
 | Variable | Default | Description |
 | --- | --- | --- |
