@@ -28,7 +28,7 @@
 为 [CLIProxyAPI（CPA）](https://github.com/router-for-me/CLIProxyAPI) 保存用量历史，看清模型花费、请求表现和凭证限额。CPA Usage Keeper 将总览、实时诊断、请求明细与限额历史集中在一个独立部署的面板中。
 
 <p align="center">
-  <strong><a href="#keeper-only">部署 Keeper</a> · <a href="#cpa--keeper">部署 CPA + Keeper</a> · <a href="#配置">查看配置</a></strong>
+  <strong><a href="#keeper-only">部署 Keeper</a>&emsp;|&emsp;<a href="#cpa--keeper">部署 CPA + Keeper</a>&emsp;|&emsp;<a href="#配置">查看配置</a></strong>
 </p>
 
 ## 界面预览

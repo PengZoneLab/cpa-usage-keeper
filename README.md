@@ -28,7 +28,7 @@
 Keep usage history for [CLIProxyAPI (CPA)](https://github.com/router-for-me/CLIProxyAPI), understand model costs, and track request performance and credential quotas. CPA Usage Keeper brings overviews, realtime diagnostics, request details, and quota history into one independently deployed dashboard.
 
 <p align="center">
-  <strong><a href="#keeper-only">Deploy Keeper</a> · <a href="#cpa--keeper">Deploy CPA + Keeper</a> · <a href="#configuration">Configuration</a></strong>
+  <strong><a href="#keeper-only">Deploy Keeper</a>&emsp;|&emsp;<a href="#cpa--keeper">Deploy CPA + Keeper</a>&emsp;|&emsp;<a href="#configuration">Configuration</a></strong>
 </p>
 
 ## Screenshots
