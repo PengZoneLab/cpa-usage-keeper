@@ -34,7 +34,7 @@ npm --prefix ./web run build
 
 - 自然日计算：`internal/timeutil.CivilDate`、`DayBounds`；聚合读取使用 repository 的桶适配方法。
 - 原始事件过滤：`internal/repository/usage_event_time_read.go`。普通查询使用有界分段，近期缓存启动或重载使用开放上界；字段选择和缓存生命周期仍由调用方处理。
-- 前端标签：`web/src/utils/usage/timeLabels.ts`。仅为夏令时回拨产生的重复钟面补充时区偏移，保留现有语言、精度、回退及补点规则。
+- 前端标签：`web/src/utils/usage/timeLabels.ts`。仅为存在歧义的当地钟面补充时区偏移，保留现有语言、精度、回退及补点规则。
 
 ### 验证要求
 

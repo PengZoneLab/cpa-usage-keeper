@@ -34,7 +34,7 @@ npm --prefix ./web run build
 
 - Calendar-day calculations: `internal/timeutil.CivilDate` and `DayBounds`. Read aggregates through repository bucket adapters.
 - Raw-event filtering: `internal/repository/usage_event_time_read.go`. Use bounded segments for ordinary queries and the open-ended reader for recent-cache startup/reload; callers retain field selection and cache lifecycle handling.
-- Frontend labels: `web/src/utils/usage/timeLabels.ts`. Add timezone offsets only to repeated clocks during DST folds, preserving locale, precision, fallback, and empty-point rules.
+- Frontend labels: `web/src/utils/usage/timeLabels.ts`. Add timezone offsets only to ambiguous local clock labels, preserving locale, precision, fallback, and empty-point rules.
 
 ### Validation
 
