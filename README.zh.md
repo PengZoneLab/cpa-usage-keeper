@@ -108,9 +108,8 @@
 
 ## 快速开始
 
-> Keeper 支持 CPA v8.0.12+。请开启 CPA 使用统计，将 `observability.usage.usage-statistics-enabled` 设为 `true`。
-
-> 同一 CPA 接入多个 usage 采集服务时，请确保均使用订阅模式，否则可能导致收数中断或数据不完整。
+> Keeper 支持 CPA v8.0.12+。请将 `observability.usage.usage-statistics-enabled` 设为 `true`，开启使用统计。<br>
+> 同一 CPA 接入多个采集服务时，须全部使用订阅模式，避免收数中断或数据缺失。
 
 推荐使用 Docker Compose，无需安装 Go、Node.js 或编译源码。按下表选择部署方式；已有 CPA 时，准备好 CPA 地址、管理密钥和 Keeper 登录密码。
 

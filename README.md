@@ -108,9 +108,8 @@ CPA plugin embedding in CPAMC is also available. Deploy with Docker Compose, Hom
 
 ## Quick Start
 
-> Keeper supports CPA v8.0.12+. Enable CPA usage statistics by setting `observability.usage.usage-statistics-enabled` to `true`.
-
-> When multiple usage collectors share one CPA instance, ensure they all use subscription mode; otherwise, collection may stop or become incomplete.
+> Keeper supports CPA v8.0.12+. Enable usage statistics by setting `observability.usage.usage-statistics-enabled` to `true`.<br>
+> When multiple collectors share one CPA instance, all must use subscription mode to avoid interrupted collection or missing data.
 
 Docker Compose is recommended; no Go, Node.js, or source build is needed. Choose a deployment below. For an existing CPA, have its address and management key ready, and choose a Keeper login password.
 
