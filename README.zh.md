@@ -127,10 +127,12 @@
 
 `linux/amd64` 生产型容量测试覆盖持续 ingestion、Dashboard 延迟、CPU 利用率和 Keeper cgroup 峰值内存，完整结果见 [容量 Benchmark 报告](./internal/benchmark/reports/capacity/README.zh.md)。
 
-<details>
-<summary>开发者参考：项目结构、本地运行与测试</summary>
+## 开发者参考
 
-## 项目结构
+<details>
+<summary>项目结构、本地运行与测试</summary>
+
+### 项目结构
 
 ```text
 cmd/server/              应用入口
@@ -146,9 +148,9 @@ deploy/                  部署模板
 web/                     React + TypeScript 前端
 ```
 
-## 本地开发
+### 本地开发
 
-### 前置依赖
+#### 前置依赖
 
 - Go 1.26.10+
 - Node.js 24.22.1+
@@ -157,7 +159,7 @@ web/                     React + TypeScript 前端
 
 使用 nvm 时，在仓库根目录运行 `nvm install` 和 `nvm use`，即可选择 `.nvmrc` 中指定的版本。
 
-### 本地运行
+#### 本地运行
 
 1. 将 `.env.example` 复制为 `.env`，至少设置 `CPA_BASE_URL`、`CPA_MANAGEMENT_KEY` 和私有的 `LOGIN_PASSWORD`。
 
@@ -181,7 +183,7 @@ npm --prefix ./web run dev -- --host 127.0.0.1
 
 打开 `http://127.0.0.1:5173`。前端默认将 `/api` 代理到 `http://127.0.0.1:8080`；后端使用其它端口时可通过 `VITE_API_PROXY_TARGET` 覆盖。
 
-### 测试
+#### 测试
 
 运行完整验证：
 

@@ -127,10 +127,12 @@ Login protection is enabled by default. Configure `LOGIN_PASSWORD` before starti
 
 Production-style `linux/amd64` capacity measurements for sustained ingestion, Dashboard latency, CPU utilization, and Keeper cgroup peak memory are available in the [Capacity Benchmark Report](./internal/benchmark/reports/capacity/README.md).
 
-<details>
-<summary>Developer reference: project structure, local setup, and tests</summary>
+## Developer Reference
 
-## Project Structure
+<details>
+<summary>Project structure, local setup, and tests</summary>
+
+### Project Structure
 
 ```text
 cmd/server/              Application entry point
@@ -146,9 +148,9 @@ deploy/                  Deployment templates
 web/                     React + TypeScript frontend
 ```
 
-## Local Development
+### Local Development
 
-### Prerequisites
+#### Prerequisites
 
 - Go 1.26.10+
 - Node.js 24.22.1+
@@ -157,7 +159,7 @@ web/                     React + TypeScript frontend
 
 If you use nvm, run `nvm install` and `nvm use` in the repository root to select the version in `.nvmrc`.
 
-### Run Locally
+#### Run Locally
 
 1. Copy `.env.example` to `.env`, then set at least `CPA_BASE_URL`, `CPA_MANAGEMENT_KEY`, and a private `LOGIN_PASSWORD`.
 
@@ -181,7 +183,7 @@ npm --prefix ./web run dev -- --host 127.0.0.1
 
 Open `http://127.0.0.1:5173`. The frontend proxies `/api` to `http://127.0.0.1:8080`; override it with `VITE_API_PROXY_TARGET` when the backend uses another port.
 
-### Tests
+#### Tests
 
 Run the full verification baseline:
 
