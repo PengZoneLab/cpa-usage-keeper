@@ -246,6 +246,8 @@ For optional environment-file setup, see [advanced configuration](./docs/configu
 docker compose up -d
 ```
 
+Open `http://your-server-address:8080` and sign in with your Keeper login password.
+
 For a new deployment, add model credentials in CPA and make a model request to generate usage records.
 
 CPA data is stored under `./cpa`, and Keeper data is stored under `./keeper`.

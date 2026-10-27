@@ -246,6 +246,8 @@ curl -fL https://raw.githubusercontent.com/Willxup/cpa-usage-keeper/main/deploy/
 docker compose up -d
 ```
 
+访问 `http://服务器地址:8080`，使用 Keeper 登录密码登录。
+
 首次部署还需在 CPA 中添加模型凭证，调用模型后才会产生使用记录。
 
 CPA 数据保存在 `./cpa`，Keeper 数据保存在 `./keeper`。
