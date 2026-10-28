@@ -54,6 +54,30 @@ func TestNormalizeClaudeSubscription(t *testing.T) {
 			want: "max",
 		},
 		{
+			name: "max 5x rate limit tier",
+			profile: &quota.ClaudeProfileResponse{
+				Account:      &quota.ClaudeProfileAccount{HasClaudeMax: new(true)},
+				Organization: &quota.ClaudeProfileOrganization{OrganizationType: "claude_max", RateLimitTier: "default_claude_max_5x"},
+			},
+			want: "max-5x",
+		},
+		{
+			name: "max 20x rate limit tier",
+			profile: &quota.ClaudeProfileResponse{
+				Account:      &quota.ClaudeProfileAccount{HasClaudeMax: new(true)},
+				Organization: &quota.ClaudeProfileOrganization{OrganizationType: "claude_max", RateLimitTier: "default_claude_max_20x"},
+			},
+			want: "max-20x",
+		},
+		{
+			name: "max without rate limit tier keeps plain max",
+			profile: &quota.ClaudeProfileResponse{
+				Account:      &quota.ClaudeProfileAccount{HasClaudeMax: new(true)},
+				Organization: &quota.ClaudeProfileOrganization{OrganizationType: "claude_max"},
+			},
+			want: "max",
+		},
+		{
 			name: "pro wins over team",
 			profile: &quota.ClaudeProfileResponse{
 				Account:      &quota.ClaudeProfileAccount{HasClaudeMax: new(false), HasClaudePro: new(true)},
@@ -195,7 +219,7 @@ func TestNormalizeSubscriptionRejectsMissingOrUnregisteredValues(t *testing.T) {
 func TestResolveIdentitySubscriptionOnlyPublishesCodexMetadata(t *testing.T) {
 	pro := " pro "
 	got := quota.ResolveIdentitySubscription(entities.UsageIdentity{
-		AuthType: entities.UsageIdentityAuthTypeAuthFile,
+		AuthType: entities.UsageIdentityAuthTypeCredential,
 		Type:     "codex",
 		Provider: "Codex",
 		PlanType: &pro,
@@ -205,9 +229,9 @@ func TestResolveIdentitySubscriptionOnlyPublishesCodexMetadata(t *testing.T) {
 	}
 
 	for _, identity := range []entities.UsageIdentity{
-		{AuthType: entities.UsageIdentityAuthTypeAuthFile, Type: "claude", Provider: "Claude", PlanType: &pro},
+		{AuthType: entities.UsageIdentityAuthTypeCredential, Type: "claude", Provider: "Claude", PlanType: &pro},
 		{AuthType: entities.UsageIdentityAuthTypeAIProvider, Type: "codex", Provider: "Codex", PlanType: &pro},
-		{AuthType: entities.UsageIdentityAuthTypeAuthFile, Type: "codex", Provider: "Codex"},
+		{AuthType: entities.UsageIdentityAuthTypeCredential, Type: "codex", Provider: "Codex"},
 	} {
 		if got := quota.ResolveIdentitySubscription(identity); got != nil {
 			t.Fatalf("ResolveIdentitySubscription(%#v) = %#v, want nil", identity, got)

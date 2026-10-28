@@ -41,45 +41,25 @@ type RealtimeTokenVelocityPointRecord struct {
 	CostUSD         *float64
 }
 
-// RealtimeResponseLevelPointRecord 是 Overview 响应水平图的单个短窗口桶。
-type RealtimeResponseLevelPointRecord struct {
-	Bucket       string
-	TTFTP50MS    *int64
-	TTFTP95MS    *int64
-	LatencyP50MS *int64
-	LatencyP95MS *int64
+// RealtimeLatencyScatterRecord 保留同一请求的 TTFT/总耗时配对；摘要覆盖全部可见请求。
+type RealtimeLatencyScatterRecord struct {
+	Points       []RealtimeLatencyScatterPointRecord
+	TotalPoints  int64
+	P95TTFTMS    int64
+	P95LatencyMS int64
+	MaxTTFTMS    int64
+	MaxLatencyMS int64
 }
 
-// RealtimeResponseAveragePointRecord 是响应分布图的一条平均线点。
-type RealtimeResponseAveragePointRecord struct {
-	Bucket string
-	AvgMS  *float64
+type RealtimeLatencyScatterPointRecord struct {
+	TTFTMS    int64
+	LatencyMS int64
 }
 
-// RealtimeResponseParticleRecord 是响应分布图的一个聚合粒子点。
-type RealtimeResponseParticleRecord struct {
-	Bucket    string
-	Timestamp string
-	MS        int64
-	Count     int64
-}
+// RealtimeUsageOtherKey 只标识 Top5 后聚合的第六项；真实对象即使同名仍按普通项处理。
+const RealtimeUsageOtherKey = "__realtime_others__"
 
-// RealtimeResponseDistributionSeriesRecord 是单个响应指标的平均线和粒子分布。
-type RealtimeResponseDistributionSeriesRecord struct {
-	AverageLine    []RealtimeResponseAveragePointRecord
-	Particles      []RealtimeResponseParticleRecord
-	TotalParticles int64
-	Sampled        bool
-	MaxParticles   int
-}
-
-// RealtimeResponseDistributionRecord 是 TTFT 和 Latency 的实时响应分布。
-type RealtimeResponseDistributionRecord struct {
-	TTFT    RealtimeResponseDistributionSeriesRecord
-	Latency RealtimeResponseDistributionSeriesRecord
-}
-
-// RealtimeUsageTopItemRecord 是 Overview 当前使用 Top 列表项。
+// RealtimeUsageTopItemRecord 是 Overview 当前使用 Top5+Other 列表项。
 type RealtimeUsageTopItemRecord struct {
 	Key      string
 	Label    string
@@ -89,27 +69,50 @@ type RealtimeUsageTopItemRecord struct {
 	Share    float64
 }
 
-// RealtimeCurrentUsageRecord 是 Overview 当前使用按维度聚合的 Top 列表。
+// RealtimeCurrentUsageRecord 是 Overview 当前使用按维度聚合的 Top5+Other 列表。
 type RealtimeCurrentUsageRecord struct {
 	Models      []RealtimeUsageTopItemRecord
 	APIKeys     []RealtimeUsageTopItemRecord
-	AuthFiles   []RealtimeUsageTopItemRecord
+	Credentials []RealtimeUsageTopItemRecord
 	AIProviders []RealtimeUsageTopItemRecord
+}
+
+// RealtimeModelSpeedRecord 只承载可见缓存窗口两半的逐请求速度统计。
+type RealtimeModelSpeedRecord struct {
+	Available bool
+	Start     time.Time
+	Mid       time.Time
+	End       time.Time
+	Series    []RealtimeModelSpeedSeriesRecord
+}
+
+type RealtimeModelSpeedSeriesRecord struct {
+	Model            string
+	TotalTokens      int64
+	SpeedSampleCount int64
+	FirstHalf        RealtimeModelSpeedSampleRecord
+	SecondHalf       RealtimeModelSpeedSampleRecord
+}
+
+type RealtimeModelSpeedSampleRecord struct {
+	SpeedTPSSum      float64
+	SpeedSampleCount int64
+	MeanTPS          *float64
 }
 
 // UsageOverviewRealtimeRecord 是 Overview 页面实时图表区使用的数据块。
 type UsageOverviewRealtimeRecord struct {
-	Insights             RealtimeInsightsRecord
-	Window               string
-	BucketSeconds        int64
-	WindowStart          time.Time
-	WindowEnd            time.Time
-	TokenVelocity        []RealtimeTokenVelocityPointRecord
-	ResponseLevel        []RealtimeResponseLevelPointRecord
-	ResponseDistribution RealtimeResponseDistributionRecord
-	CurrentUsage         RealtimeCurrentUsageRecord
-	RequestLevel         []RealtimeRequestLevelPointRecord
-	CacheLevel           []RealtimeCacheLevelPointRecord
+	Insights       RealtimeInsightsRecord
+	Window         string
+	BucketSeconds  int64
+	WindowStart    time.Time
+	WindowEnd      time.Time
+	TokenVelocity  []RealtimeTokenVelocityPointRecord
+	ModelSpeed     RealtimeModelSpeedRecord
+	LatencyScatter RealtimeLatencyScatterRecord
+	CurrentUsage   RealtimeCurrentUsageRecord
+	RequestLevel   []RealtimeRequestLevelPointRecord
+	CacheLevel     []RealtimeCacheLevelPointRecord
 }
 
 // RealtimeRequestLevelPointRecord 是 Overview 请求水平图的单个短窗口桶。
@@ -136,7 +139,7 @@ type UsageOverviewRecord struct {
 	Series      UsageOverviewSeriesRecord
 }
 
-// UsageComparisonItemRecord 与顶部 Overview 共用请求、Token 和动态计费口径。
+// UsageComparisonItemRecord 汇总同一模型、Key 或身份的请求、Token 与已存费用。
 type UsageComparisonItemRecord struct {
 	// Bucket 是当前累加行的时间桶，TokenBuckets 保存该分类的时间序列。
 	Bucket              string
@@ -161,7 +164,7 @@ type UsageOverviewComparisonsRecord struct {
 	Granularity string
 	Models      map[string]*UsageComparisonItemRecord
 	APIKeys     map[string]*UsageComparisonItemRecord
-	AuthFiles   map[string]*UsageComparisonItemRecord
+	Credentials map[string]*UsageComparisonItemRecord
 	AIProviders map[string]*UsageComparisonItemRecord
 }
 

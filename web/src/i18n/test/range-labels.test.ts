@@ -13,13 +13,13 @@ describe('range filter labels', () => {
 
   it('describes the Request Events 90-day retention window in every supported language', () => {
     expect(i18n.getResource('en', 'translation', 'usage_stats.request_events_subtitle')).toBe(
-      'Filter, inspect, and export request events from the most recent 90 days.',
+      'Filter requests from the last 90 days. Select a result badge to inspect its Prompt and parameters.',
     );
     expect(i18n.getResource('zh', 'translation', 'usage_stats.request_events_subtitle')).toBe(
-      '筛选、查看并导出最近 90 天内的请求事件。',
+      '筛选最近 90 天的请求。点击结果状态，查看 Prompt 与完整入参。',
     );
     expect(i18n.getResource('zh-TW', 'translation', 'usage_stats.request_events_subtitle')).toBe(
-      '篩選、查看並匯出最近 90 天內的請求事件。',
+      '篩選最近 90 天的請求。點擊結果狀態，查看 Prompt 與完整參數。',
     );
   });
 });

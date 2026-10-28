@@ -41,8 +41,17 @@ func attachWindowUsageStatsWithProvider(service *quota.Service, ctx context.Cont
 //go:linkname applyUsageHeaderSnapshot cpa-usage-keeper/internal/quota.(*Service).applyUsageHeaderSnapshot
 func applyUsageHeaderSnapshot(service *quota.Service, ctx context.Context, snapshot quota.UsageHeaderSnapshot) bool
 
-//go:linkname applyUsageHeaderSnapshots cpa-usage-keeper/internal/quota.(*Service).applyUsageHeaderSnapshots
-func applyUsageHeaderSnapshots(service *quota.Service, ctx context.Context, snapshots []quota.UsageHeaderSnapshot)
+//go:linkname applyUsageHeaderSnapshotPointers cpa-usage-keeper/internal/quota.(*Service).applyUsageHeaderSnapshotPointers
+func applyUsageHeaderSnapshotPointers(service *quota.Service, ctx context.Context, snapshots []*quota.UsageHeaderSnapshot)
+
+// 测试夹具使用值切片；只在测试侧适配生产 worker 的不可变指针入口。
+func applyUsageHeaderSnapshots(service *quota.Service, ctx context.Context, snapshots []quota.UsageHeaderSnapshot) {
+	pointers := make([]*quota.UsageHeaderSnapshot, 0, len(snapshots))
+	for index := range snapshots {
+		pointers = append(pointers, &snapshots[index])
+	}
+	applyUsageHeaderSnapshotPointers(service, ctx, pointers)
+}
 
 //go:linkname mergePendingUsageHeaderSnapshots cpa-usage-keeper/internal/quota.mergePendingUsageHeaderSnapshots
 func mergePendingUsageHeaderSnapshots(pending map[string]quota.UsageHeaderSnapshot, snapshots []quota.UsageHeaderSnapshot)
@@ -58,9 +67,6 @@ func sleepAutoRefreshDelay(service *quota.Service, ctx context.Context, delay ti
 
 //go:linkname newSuspendAwareTimer cpa-usage-keeper/internal/quota.newSuspendAwareTimer
 func newSuspendAwareTimer(delay time.Duration) (<-chan time.Time, func(), error)
-
-//go:linkname resetInspectionCompletedAt cpa-usage-keeper/internal/quota.(*Service).resetInspectionCompletedAt
-func resetInspectionCompletedAt(service *quota.Service)
 
 //go:linkname sortInspectionResults cpa-usage-keeper/internal/quota.sortInspectionResults
 func sortInspectionResults(results []quota.InspectionResult)
@@ -165,7 +171,7 @@ func setCodexQuotaHistoryWriter(service *quota.Service, writer func(context.Cont
 	}))
 }
 
-func setCodexQuotaHistoryLoader(service *quota.Service, loader func(context.Context, *gorm.DB, string, string) (repositorydto.CodexQuotaHistoryState, error)) {
+func setCodexQuotaHistoryLoader(service *quota.Service, loader func(context.Context, *gorm.DB, string, string, string) (repositorydto.CodexQuotaHistoryState, error)) {
 	// loader 同样是包内命名函数类型，测试通过反射适配回调并精确统计每批恢复次数。
 	field := quotaServiceField(service, "codexQuotaHistoryLoad")
 	field.Set(reflect.MakeFunc(field.Type(), func(arguments []reflect.Value) []reflect.Value {
@@ -174,6 +180,7 @@ func setCodexQuotaHistoryLoader(service *quota.Service, loader func(context.Cont
 			arguments[1].Interface().(*gorm.DB),
 			arguments[2].Interface().(string),
 			arguments[3].Interface().(string),
+			arguments[4].Interface().(string),
 		)
 		results := []reflect.Value{reflect.ValueOf(state), reflect.Zero(field.Type().Out(1))}
 		if err != nil {

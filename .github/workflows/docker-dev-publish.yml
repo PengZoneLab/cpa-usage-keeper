@@ -14,12 +14,12 @@ permissions:
 
 jobs:
   docker-dev:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - name: Validate branch ref
-        if: ${{ !startsWith(github.ref, 'refs/heads/') || github.ref_name == 'main' }}
+        if: ${{ !startsWith(github.ref, 'refs/heads/') || github.ref_name == 'master' }}
         run: |
-          echo "Manual dev Docker publishing must be run from a non-main branch." >&2
+          echo "Manual dev Docker publishing must be run from a non-master branch." >&2
           echo "Current ref: $GITHUB_REF" >&2
           exit 1
 
@@ -86,6 +86,10 @@ jobs:
           context: .
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
+          pull: true
           push: true
+          build-args: |
+            NODE_IMAGE=node:24-alpine3.24
+            GO_IMAGE=golang:1.26-alpine3.24
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

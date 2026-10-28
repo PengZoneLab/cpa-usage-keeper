@@ -2,9 +2,11 @@ package dto
 
 import "time"
 
-// CodexQuotaEfficiencyQuery 描述一次只读的 Codex 主额度效率回溯，不会把统计结果写回历史表。
+// CodexQuotaEfficiencyQuery 描述一次只读的账号主额度效率回溯，不会把统计结果写回历史表。
 type CodexQuotaEfficiencyQuery struct {
-	// AuthIndex 是 Auth File 与 usage_events 之间唯一允许的账号关联键。
+	// Provider 来自当前 Credential 的真实 type；旧内部调用缺失时仍按 Codex 处理。
+	Provider string
+	// AuthIndex 是 Credential 与 usage_events 之间唯一允许的账号关联键。
 	AuthIndex string
 	// Now 固定本次响应的“当前时间”，避免多条查询跨秒后对当前周期产生不同判断。
 	Now time.Time
@@ -16,11 +18,11 @@ type CodexQuotaEfficiencyQuery struct {
 
 // CodexQuotaEfficiencyHistory 是图表、周期摘要和完整周期列表共同复用的规范化查询结果。
 type CodexQuotaEfficiencyHistory struct {
-	// GeneratedAt 是本次 pricing snapshot 与当前周期截点共同绑定的生成时间。
+	// GeneratedAt 固定本次当前周期的查询截点和响应时间。
 	GeneratedAt time.Time
 	// RangeStart 是响应实际采用的历史下界，供调用层明确“最近 30 天”口径。
 	RangeStart time.Time
-	// Windows 只列最近一次账号响应存在的角色，每个角色最多一项并使用其最新真实周期。
+	// Windows 列出近 30 天范围内各自有记录的角色，每个角色最多一项并使用其最新真实周期。
 	Windows []CodexQuotaEfficiencyWindow
 	// SelectedWindow 是当前响应实际展开的单个窗口；没有历史时为 nil。
 	SelectedWindow *CodexQuotaEfficiencyWindow
@@ -30,7 +32,7 @@ type CodexQuotaEfficiencyHistory struct {
 
 // CodexQuotaEfficiencyWindow 用上游角色稳定表达一个窗口，周期长度取该角色的最新观察值。
 type CodexQuotaEfficiencyWindow struct {
-	// WindowRole 是上游主额度中的 primary 或 secondary 位置。
+	// WindowRole 是共享 API 的 primary/secondary，内部存储键按 provider 映射。
 	WindowRole string
 	// WindowKind 是当前已知秒数的友好分类；未知正窗口保持 nil。
 	WindowKind *string
@@ -105,7 +107,7 @@ type CodexQuotaEfficiencyUsage struct {
 	SuccessfulRequests int64
 	// FailedRequests 是 Failed=true 的请求数量。
 	FailedRequests int64
-	// InputTokens 保留输入 Token 汇总，供当前 pricing snapshot 计算成本。
+	// InputTokens 保留输入 Token 原值汇总，供周期用量展示。
 	InputTokens int64
 	// OutputTokens 保留输出 Token 汇总。
 	OutputTokens int64
@@ -117,8 +119,8 @@ type CodexQuotaEfficiencyUsage struct {
 	CacheCreationTokens int64
 	// TotalTokens 是页面展示和每百分点效率计算使用的总 Token。
 	TotalTokens int64
-	// TotalCostUSD 是按本次响应固定的当前 pricing snapshot 动态回算值。
+	// TotalCostUSD 是事件已存美元费用在该周期或区间的总和。
 	TotalCostUSD float64
-	// CostAvailable 只有所有需要计价的分组都成功匹配价格时才为 true。
+	// CostAvailable 只有范围内每条事件的已存费用都标记可用时才为 true。
 	CostAvailable bool
 }
