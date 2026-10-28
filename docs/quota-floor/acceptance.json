@@ -1,0 +1,94 @@
+[
+  {
+    "name": "model request allowed",
+    "passed": true,
+    "detail": {
+      "http_status": 200,
+      "error_type": null
+    }
+  },
+  {
+    "name": "save 100",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "exact threshold pauses actual CPA account",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "model request blocked",
+    "passed": true,
+    "detail": {
+      "http_status": 400,
+      "error_type": "invalid_request_error"
+    }
+  },
+  {
+    "name": "restart preserves policy and ownership",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "save 0",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "fresh quota recovers owned pause",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "model request allowed",
+    "passed": true,
+    "detail": {
+      "http_status": 200,
+      "error_type": null
+    }
+  },
+  {
+    "name": "save 100",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "manual hold accepted",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "save 0",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "manual hold overrides recovery",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "model request blocked",
+    "passed": true,
+    "detail": {
+      "http_status": 400,
+      "error_type": "invalid_request_error"
+    }
+  },
+  {
+    "name": "manual enable checks fresh quota",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "save None",
+    "passed": true,
+    "detail": null
+  },
+  {
+    "name": "clear policy",
+    "passed": true,
+    "detail": null
+  }
+]

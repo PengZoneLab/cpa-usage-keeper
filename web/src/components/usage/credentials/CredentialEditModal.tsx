@@ -1,10 +1,11 @@
-import { useLayoutEffect, useRef, useState, type RefObject } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useCredentialEnterSave } from './useCredentialEnterSave'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { ApiError } from '@/lib/api'
+import { quotaFloorRequest, type QuotaFloor } from '@/lib/quotaFloor'
+import { ApiError, setCredentialDisabled } from '@/lib/api'
 import { parseCredentialPriority } from './CredentialPriorityEditor'
 import { isCredentialStatusToggleSupported } from './CredentialStatusToggle'
 import type { CredentialDetailSelection, CredentialEditChange } from './credentialViewModels'
@@ -38,14 +39,34 @@ export function CredentialEditModal({ selection, onClose, onSaveField, onSaved, 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [partial, setPartial] = useState(false)
+  const [floor, setFloor] = useState<QuotaFloor | null>(null)
+  const [minimum, setMinimum] = useState('')
+  const [floorLoadError, setFloorLoadError] = useState(false)
+  const [loadVersion, setLoadVersion] = useState(0)
+  const authIndex = identity.identity
+  useEffect(() => {
+    if (selection.kind !== 'credential' || identity.is_deleted || !authIndex) return
+    let active = true
+    quotaFloorRequest(authIndex).then((policy) => {
+      if (!active) return
+      setFloor(policy)
+      setMinimum(policy.minimum_percent === null ? '' : String(policy.minimum_percent))
+      setFloorLoadError(false)
+    }).catch(() => { if (active) setFloorLoadError(true) })
+    return () => { active = false }
+  }, [selection.kind, authIndex, identity.is_deleted, loadVersion])
+  const parsedMinimum = minimum.trim() === '' ? null : Number(minimum)
+  const floorInvalid = parsedMinimum !== null && (!Number.isFinite(parsedMinimum) || parsedMinimum < 0 || parsedMinimum > 100)
+  const floorDirty = floor !== null && parsedMinimum !== floor.minimum_percent
   const busyRef = useRef(false)
   const statusSupported = selection.kind === 'credential' || isCredentialStatusToggleSupported(identity.type)
   const readOnly = Boolean(identity.is_deleted)
   const parsedPriority = parseCredentialPriority(priority)
-  const dirty = alias.trim() !== saved.alias.trim() || parsedPriority !== saved.priority || (statusSupported && !enabled !== saved.disabled)
+  const dirty = floorDirty || alias.trim() !== saved.alias.trim() || parsedPriority !== saved.priority || (statusSupported && !enabled !== saved.disabled)
 
   const save = async () => {
     if (busyRef.current || readOnly || !dirty) return
+    if (floorInvalid) { setError(t('usage_stats.quota_floor_invalid')); return }
     if (parsedPriority === null) { setError(t('usage_stats.credentials_priority_invalid')); return }
     const changes: CredentialEditChange[] = []
     if (alias.trim() !== saved.alias.trim()) changes.push({ field: 'alias', value: alias.trim() })
@@ -56,6 +77,11 @@ export function CredentialEditModal({ selection, onClose, onSaveField, onSaved, 
     setError('')
     let completed = 0
     try {
+      if (floorDirty) {
+        const updated = await quotaFloorRequest(authIndex, parsedMinimum)
+        setFloor(updated)
+        completed += 1
+      }
       // 各字段使用现有独立接口，逐项记住成功结果；失败后只重试未保存部分。
       for (const change of changes) {
         await onSaveField(change)
@@ -72,7 +98,7 @@ export function CredentialEditModal({ selection, onClose, onSaveField, onSaved, 
           : cause instanceof ApiError && cause.status === 409
             ? selection.kind === 'credential' ? 'usage_stats.credentials_priority_conflict_credential' : 'usage_stats.credentials_edit_unsupported'
             : 'usage_stats.credentials_edit_failed'
-      setError(t(key))
+      setError(cause instanceof ApiError && (cause.code === 'quota_floor_blocked' || cause.message.includes('quota_floor_blocked')) ? t('usage_stats.quota_floor_blocked') : t(key))
     } finally {
       busyRef.current = false
       setSaving(false)
@@ -105,6 +131,30 @@ export function CredentialEditModal({ selection, onClose, onSaveField, onSaved, 
         {!statusSupported && <p className="hint">{t('usage_stats.credentials_edit_unsupported')}</p>}
         <Input label={t('usage_stats.credentials_edit_priority')} type="text" value={priority} disabled={saving || readOnly}
           hint={t('usage_stats.credentials_priority_order_hint')} onChange={(event) => setPriority(event.target.value)} />
+        {selection.kind === 'credential' && !readOnly && <>
+          <Input label={t('usage_stats.quota_floor_label')} type="number" min={0} max={100} step="any" inputMode="decimal"
+            value={minimum} placeholder={t('usage_stats.quota_floor_off')} disabled={saving || !floor}
+            hint={t('usage_stats.quota_floor_hint')} error={floorInvalid ? t('usage_stats.quota_floor_invalid') : undefined}
+            onChange={(event) => setMinimum(event.target.value)} />
+          {floorLoadError ? <div role="alert" className="error-box">{t('usage_stats.quota_floor_load_failed')}
+            <Button variant="secondary" onClick={() => { setFloorLoadError(false); setLoadVersion((value) => value + 1) }}>{t('common.retry')}</Button>
+          </div> : !floor ? <p role="status" className="hint">{t('common.loading')}</p> : <>
+            <p role="status" className="hint">{t(`usage_stats.quota_floor_state_${floor.state}`)}
+              {floor.remaining_percent !== null && ` · ${t('usage_stats.quota_floor_remaining', { value: Number(floor.remaining_percent.toFixed(2)) })}`}
+              {floor.checked_at && ` · ${new Date(floor.checked_at).toLocaleString()}`}
+            </p>
+            {floor.paused && !floor.manual_hold && <Button variant="secondary" disabled={saving} onClick={async () => {
+              if (busyRef.current) return
+              busyRef.current = true; setSaving(true); setError('')
+              try {
+                await setCredentialDisabled('credential', authIndex, true)
+                setFloor({ ...floor, paused: false, manual_hold: true, state: 'manual' })
+                setEnabled(false); setSaved((current) => ({ ...current, disabled: true }))
+              } catch { setError(t('usage_stats.credentials_edit_failed')) }
+              finally { busyRef.current = false; setSaving(false) }
+            }}>{t('usage_stats.quota_floor_keep_disabled')}</Button>}
+          </>}
+        </>}
         {selection.kind === 'ai-provider' && identity.type.trim().toLowerCase() === 'openai' &&
           <p className="hint">{t('usage_stats.credentials_priority_openai_scope')}</p>}
         {partial && <p className={styles.credentialEditPartial} role="status">{t('usage_stats.credentials_edit_partial')}</p>}

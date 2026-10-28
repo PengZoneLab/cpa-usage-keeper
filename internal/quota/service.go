@@ -118,7 +118,9 @@ type Service struct {
 }
 
 type CheckRequest struct {
-	AuthIndex string `json:"auth_index"`
+	// RequireExplicitPercent prevents absent provider percentages from becoming zero usage in protection decisions.
+	RequireExplicitPercent bool   `json:"-"`
+	AuthIndex              string `json:"auth_index"`
 	// Source 决定运行期额度历史的队列分流与可信校准权限，不进入数据库或对外响应。
 	Source RefreshSource `json:"-"`
 }
@@ -372,6 +374,9 @@ func (s *Service) check(ctx context.Context, request CheckRequest, beforeSubscri
 		ID:           authIndex,
 		Quota:        NormalizeQuotaRows(providerOutput),
 		Subscription: NormalizeSubscription(providerOutput),
+	}
+	if request.RequireExplicitPercent {
+		response.Quota = protectionQuotaRows(providerOutput)
 	}
 	if result, ok := providerOutput.Result.(ClaudeResult); ok && result.Usage != nil {
 		response.ClaudeResetGrants = result.Usage.ResetGrants

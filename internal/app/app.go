@@ -73,6 +73,7 @@ type App struct {
 	UsageAggregation  Runner
 	Maintenance       *StorageCleanupRunner
 	MetadataSync      *MetadataSyncRunner
+	QuotaFloor        Runner
 	QuotaService      QuotaRunner
 	QuotaAutoRefresh  QuotaRunner
 	BackupMaintenance *DatabaseBackupRunner
@@ -212,6 +213,8 @@ func buildReadyApp(cfg config.Config, db, readDB *gorm.DB, logCloser io.Closer, 
 	credentialMutationLocks := &service.CredentialMutationLocks{}
 	credentialsManagementService := service.NewCredentialsManagementService(cpaClient, metadataSyncRunner, credentialMutationLocks, credentialMetadata)
 	credentialStatusService := service.NewCredentialStatusService(db, cpaClient, metadataSyncRunner, credentialMutationLocks, credentialMetadata)
+	quotaFloorService := service.NewQuotaFloorService(db, quotaService, cpaClient, credentialMutationLocks, credentialMetadata, metadataSyncRunner)
+	service.BindQuotaFloor(credentialStatusService, credentialsManagementService, quotaFloorService)
 	credentialPriorityService := service.NewCredentialPriorityService(db, cpaClient, metadataSyncRunner, credentialMutationLocks, credentialMetadata)
 	if cfg.TLSSkipVerify {
 		logrus.WithField("cpa_base_url", cfg.CPABaseURL).Warn("TLS certificate verification is disabled for CPA and Redis queue connections")
@@ -255,6 +258,7 @@ func buildReadyApp(cfg config.Config, db, readDB *gorm.DB, logCloser io.Closer, 
 		UsageAggregation:  usageAggregationRunner,
 		Maintenance:       NewStorageCleanupRunner(syncService),
 		MetadataSync:      metadataSyncRunner,
+		QuotaFloor:        quotaFloorService,
 		QuotaService:      quotaService,
 		QuotaAutoRefresh:  quotaService,
 		BackupMaintenance: backupMaintenance,
@@ -279,6 +283,7 @@ func buildReadyApp(cfg config.Config, db, readDB *gorm.DB, logCloser io.Closer, 
 				CPAAPIKeys:    cpaAPIKeyService,
 				Credentials:   credentialsManagementService,
 				// 凭证与 AI 供应商共用一个 service，路由层按类型分发。
+				QuotaFloor:         quotaFloorService,
 				CredentialStatus:   credentialStatusService,
 				CredentialPriority: credentialPriorityService,
 				RequestLogs:        requestLogService,
@@ -439,6 +444,13 @@ func (a *App) startReadyBackgroundTasks(ctx context.Context) {
 	}
 	if a.QuotaService != nil {
 		a.QuotaService.SetRefreshContext(ctx)
+	}
+	if a.QuotaFloor != nil {
+		a.startBackgroundTask(func() {
+			if err := a.QuotaFloor.Run(ctx); err != nil {
+				logrus.WithError(err).Error("quota floor stopped")
+			}
+		})
 	}
 	if a.QuotaAutoRefresh != nil {
 		a.startBackgroundTask(func() {

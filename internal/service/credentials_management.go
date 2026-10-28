@@ -29,6 +29,7 @@ type CredentialsManagementResponse struct {
 }
 
 type credentialsManagementService struct {
+	floor    *QuotaFloorService
 	client   CredentialsManagementClient
 	locks    *CredentialMutationLocks
 	metadata *CredentialMetadataCoordinator
@@ -69,6 +70,12 @@ func (s *credentialsManagementService) SetCredentialsDisabled(ctx context.Contex
 				return
 			}
 			defer s.locks.lockCredential(name)()
+			if err := s.floor.prepareManual(ctx, name, "", disabled); err != nil {
+				mu.Lock()
+				updateErr = joinCredentialsManagementError(updateErr, err)
+				mu.Unlock()
+				return
+			}
 			// 批量入口只有文件名，auth_index 留空沿用原有语义。
 			if _, err := s.client.UpdateCredentialStatus(ctx, name, "", disabled); err != nil {
 				mu.Lock()

@@ -101,6 +101,7 @@ func (a *App) installReadyApp(ready *App) {
 	a.Poller, a.RedisIngest, a.RedisProcess = ready.Poller, ready.RedisIngest, ready.RedisProcess
 	a.CPAErrors, a.UsageAggregation = ready.CPAErrors, ready.UsageAggregation
 	a.Maintenance = ready.Maintenance
+	a.QuotaFloor = ready.QuotaFloor
 	a.MetadataSync, a.QuotaService, a.QuotaAutoRefresh = ready.MetadataSync, ready.QuotaService, ready.QuotaAutoRefresh
 	a.BackupMaintenance, a.RecentUsageCache = ready.BackupMaintenance, ready.RecentUsageCache
 	a.CostReadGate, a.PricingCatalog, a.PricingService = ready.CostReadGate, ready.PricingCatalog, ready.PricingService

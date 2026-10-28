@@ -320,6 +320,7 @@ func orderedMigrations() []databaseMigration {
 		{version: migrationRecoverExecutionUsageEvents, run: recoverExecutionUsageEventsMigration, disableTransaction: true},
 		{version: "20261020_add_auth_session_oidc_identity", run: addAuthSessionOIDCIdentityMigration},
 		{version: migrationAddUsageEventEffectiveServiceTier, run: addUsageEventEffectiveServiceTierMigration},
+		{version: "20261028_credential_quota_floor", run: addCredentialQuotaFloor},
 	}
 }
 

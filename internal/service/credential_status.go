@@ -54,6 +54,7 @@ type CredentialStatusResponse struct {
 }
 
 type credentialStatusService struct {
+	floor   *QuotaFloorService
 	db      *gorm.DB
 	client  CredentialStatusClient
 	refresh MetadataRefresher
@@ -89,6 +90,9 @@ func (s *credentialStatusService) SetCredentialDisabled(ctx context.Context, aut
 	}
 
 	defer s.locks.lockCredential(name)()
+	if err := s.floor.prepareManual(ctx, name, resolvedAuthIndex, disabled); err != nil {
+		return CredentialStatusResponse{}, err
+	}
 
 	statusCode, err := s.client.UpdateCredentialStatus(ctx, name, resolvedAuthIndex, disabled)
 	if err != nil {

@@ -6,9 +6,12 @@ import { CredentialEditModal } from '../CredentialEditModal'
 import { AiProviderCredentialsSection } from '../AiProviderCredentialsSection'
 import { CredentialsSection } from '../CredentialsSection'
 import { createAiProviderSectionProps, createCredentialSectionProps } from './credentialSectionFixtures'
+import { quotaFloorRequest } from '@/lib/quotaFloor'
 import { ApiError } from '@/lib/api'
 import type { CredentialDetailSelection, CredentialEditChange } from '../credentialViewModels'
 
+vi.mock('@/lib/quotaFloor', () => ({ quotaFloorRequest: vi.fn() }))
+const floorPolicy = { minimum_percent: null, paused: false, manual_hold: false, remaining_percent: null, checked_at: null, state: 'off' }
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 vi.mock('react-i18next', () => ({ initReactI18next: { type: '3rdParty', init: () => undefined }, useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }) }))
 const selection = (type = 'codex'): CredentialDetailSelection => ({
@@ -35,13 +38,14 @@ describe('credential unified editor', () => {
   beforeEach(() => {
     container = document.createElement('div'); document.body.appendChild(container); root = createRoot(container)
     onClose.mockClear(); onSaved.mockClear()
+    vi.mocked(quotaFloorRequest).mockReset().mockResolvedValue(floorPolicy)
   })
   afterEach(async () => { await act(async () => root.unmount()); container.remove() })
   const render = async (onSaveField: (change: CredentialEditChange) => Promise<void>, type = 'codex') => {
     await act(async () => root.render(<CredentialEditModal selection={selection(type)} onClose={onClose} onSaved={onSaved} onSaveField={onSaveField} />))
   }
 
-  it('opens all fields without sending requests and cancels an unsaved draft', async () => {
+  it('loads settings without mutating and cancels an unsaved draft', async () => {
     const save = vi.fn(async () => undefined)
     await render(save)
     expect(document.querySelector('[role="dialog"]')).not.toBeNull()
@@ -52,6 +56,40 @@ describe('credential unified editor', () => {
     await act(async () => button('cancel').click())
     expect(onClose).toHaveBeenCalledTimes(1)
     expect(save).not.toHaveBeenCalled()
+  })
+
+
+  const minimumField = () => document.querySelector<HTMLInputElement>('input[type="number"]')!
+  it('saves a per-account floor with the existing save action', async () => {
+    const save = vi.fn(async () => undefined)
+    await render(save)
+    await change(minimumField(), '10')
+    await act(async () => button('save').click())
+    expect(quotaFloorRequest).toHaveBeenLastCalledWith('idx/one', 10)
+    expect(save).not.toHaveBeenCalled()
+    expect(onSaved).toHaveBeenCalledTimes(1)
+  })
+  it('rejects values outside the percentage range', async () => {
+    await render(async () => undefined)
+    await change(minimumField(), '101')
+    await act(async () => button('save').click())
+    expect(quotaFloorRequest).toHaveBeenCalledTimes(1)
+    expect(onSaved).not.toHaveBeenCalled()
+    expect(document.body.textContent).toContain('quota_floor_invalid')
+  })
+  it('clears a saved floor with null instead of zero', async () => {
+    vi.mocked(quotaFloorRequest).mockResolvedValue({ ...floorPolicy, minimum_percent: 10 })
+    await render(async () => undefined)
+    await change(minimumField(), '')
+    await act(async () => button('save').click())
+    expect(quotaFloorRequest).toHaveBeenLastCalledWith('idx/one', null)
+  })
+  it('keeps the draft and reports a load failure without overwriting the policy', async () => {
+    vi.mocked(quotaFloorRequest).mockRejectedValue(new Error('offline'))
+    await render(async () => undefined)
+    expect(minimumField().disabled).toBe(true)
+    expect(document.body.textContent).toContain('quota_floor_load_failed')
+    expect(button('save').disabled).toBe(true)
   })
 
   it('preserves the draft and retries only unsaved fields after partial success', async () => {
@@ -67,7 +105,7 @@ describe('credential unified editor', () => {
     expect(save.mock.calls.map(([change]) => change.field)).toEqual(['alias', 'priority'])
     expect(onSaved).not.toHaveBeenCalled()
     expect(field('alias').value).toBe('Home')
-    expect(document.querySelector('[role="status"]')?.textContent).toContain('credentials_edit_partial')
+    expect(Array.from(document.querySelectorAll('[role="status"]')).some((node) => node.textContent?.includes('credentials_edit_partial'))).toBe(true)
     await act(async () => button('save').click())
     expect(save.mock.calls.map(([change]) => change)).toEqual([
       { field: 'alias', value: 'Home' }, { field: 'priority', value: -2 },

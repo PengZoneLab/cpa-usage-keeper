@@ -61,6 +61,8 @@ func bindCredentialStatusRequest(c *gin.Context) (credentialStatusRequest, bool)
 // writeCredentialStatusError 把服务层哨兵错误映射为稳定的 HTTP 状态，其它错误保持 500。
 func writeCredentialStatusError(c *gin.Context, err error, message string) {
 	switch {
+	case errors.Is(err, service.ErrQuotaFloorBlocked):
+		c.JSON(http.StatusConflict, gin.H{"error": "quota_floor_blocked", "code": "quota_floor_blocked"})
 	case errors.Is(err, service.ErrCredentialConfigChanged):
 		c.JSON(http.StatusPreconditionFailed, gin.H{"error": "credential configuration changed"})
 	case errors.Is(err, service.ErrCredentialStatusValidation):

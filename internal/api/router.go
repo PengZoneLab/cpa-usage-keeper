@@ -56,6 +56,7 @@ type OptionalProviders struct {
 	Quota              QuotaProvider
 	CPAAPIKeys         service.CPAAPIKeyProvider
 	Credentials        service.CredentialsManagementProvider
+	QuotaFloor         *service.QuotaFloorService
 	CredentialStatus   service.CredentialStatusProvider
 	CredentialPriority service.CredentialPriorityProvider
 	RequestLogs        service.RequestLogProvider
@@ -146,6 +147,9 @@ func NewRouter(
 	registerErrorEventRoutes(adminProtected, errorEventProvider)
 	registerCredentialManagementRoutes(adminProtected, credentialsProvider)
 	registerCredentialStatusRoutes(adminProtected, credentialStatusProvider)
+	if len(optionalProviders) > 0 {
+		registerQuotaFloorRoutes(adminProtected, optionalProviders[0].QuotaFloor)
+	}
 	registerCredentialPriorityRoutes(adminProtected, credentialPriorityProvider)
 	registerAuthSessionManagementRoutes(adminProtected, authHandler)
 	registerCPAAPIKeyRoutes(adminProtected, cpaAPIKeyProvider, usageProvider)
