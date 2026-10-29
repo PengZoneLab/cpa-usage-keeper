@@ -11,3 +11,7 @@
 
 - I9 / R2：关闭auto后的纯临期pending阻止人工enable；R3已原子取消，待独立复验。
 - I10 / R2：双触发任务历史source=expiry导致关闭auto后跳过单卡预约；R3按实际ScheduledAt判断并恢复source，待独立复验。
+
+## 当前状态
+
+I1、I3—I10 均已完成实现及独立复验。I2真实临期窗口仍等待，不标记已完成。生产已部署c5e8abff，真实验证白名单仅三账户各一张指定日期卡；原始ID只存在private/。

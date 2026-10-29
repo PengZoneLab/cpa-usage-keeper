@@ -1,0 +1,25 @@
+{
+  "time": "2026-10-29T16:57:36.678338+00:00",
+  "commit": "c5e8abff1d54352ddd458e6105674c9db3ed74e6",
+  "branch": "master",
+  "pushed": true,
+  "keeper_image": "keeper-reset-scheduler:20261030",
+  "cpa_image": "cpa-reset-scheduler:20261030",
+  "backup": "/opt/cpa-keeper/backups/reset-scheduler-20261030/state.tgz",
+  "rollback_containers": [
+    "cpa-before-reset-20261030",
+    "cpa-usage-keeper-before-reset-20261030"
+  ],
+  "readiness_http": 200,
+  "keeper_health": "healthy",
+  "scope": "exact three-account one-card validation allowlist configured; raw scope private and gitignored",
+  "real_validation": "scheduled case passed; expiry case waiting for real window",
+  "scheduled_case": {
+    "attempts": 1,
+    "result_code": "reset",
+    "account_disabled_after": true,
+    "used_percent_before": 88,
+    "used_percent_after": 0,
+    "other_card_preserved": true
+  }
+}
