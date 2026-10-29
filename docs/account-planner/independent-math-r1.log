@@ -1,0 +1,14 @@
+
+> web@0.0.0 test
+> vitest run --run src/features/account-planner/solver.independent.test.ts
+
+
+ RUN  v3.2.7 /Users/ly/Documents/coderepo/cpa-usage-keeper-optimal-planner/web
+
+ ✓ src/features/account-planner/solver.independent.test.ts (8 tests) 98ms
+
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+   Start at  07:00:56
+   Duration  281ms (transform 19ms, setup 0ms, collect 21ms, tests 98ms, environment 0ms, prepare 22ms)
+

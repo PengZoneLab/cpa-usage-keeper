@@ -54,8 +54,10 @@ D1 合并并推送 master → D2 构建线上镜像 → D3 备份与替换 Keepe
 |编号|负责人|依赖|完成标准|状态|产物/证据|轮次|
 |---|---|---|---|---|---|---|
 |D1|主Agent|N9|已验收代码及真实weekly-only修复推送主干|已完成|af2759e5 + 6ae70328；origin/master=6ae70328|2|
-|D2|主Agent|D1|Linux amd64镜像构建完成并绑定版本|进行中|keeper-account-planner:20261030-r2|2|
-|D3|主Agent|D2|备份成功、新Keeper健康、CPA不重启|未开始|待记录|1|
-|D4|math_review|D3|线上版本、接口、资源及只读账号数据独立核验|未开始|deployment-independent.md|1|
+|D2|主Agent|D1|Linux amd64镜像构建完成并绑定版本|已完成|keeper-account-planner:20261030-r2，image e71c4181e4ad|2|
+|D3|主Agent|D2|备份成功、新Keeper健康、CPA不重启|已完成|deployment.json，健康检查通过，CPA启动时间未变|1|
+|D4|math_review|D3|线上版本、接口、资源及只读账号数据独立核验|已完成|deployment-independent.md；production-browser.json|1|
 
 上线前发现并修复：真实账号只返回周窗口时不应强制存在短窗；补2项测试，42项相关测试及独立34项通过。未返回短窗的建模限制在页面明确展示。此修复使旧UI源码指纹失效，由新版本6ae70328及上线证据替代；原功能阶段验收记录保留。
+
+上线验收完成：版本6ae70328，Keeper healthy；7账号/5停用/2可参与；实际场景计算返回2行，路由状态与重置策略前后相同。主干后续仅增加验收文档，不改变部署代码。

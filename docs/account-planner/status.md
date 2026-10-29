@@ -1,5 +1,7 @@
-# 交付状态
+# 当前交付状态
 
-当前有效DAG全部完成。数学与UI独立验收通过。代码只在任务worktree，未提交、未推送、未合并、未部署。临时preview已停止、5196端口锁已释放。
+已合并并推送远程 master，已部署 251 Keeper。线上代码版本 `6ae70328`；后续提交仅验收文档。
 
-完整状态以 [DAG](dag.md) 和 [最终验收](final-acceptance.md) 为准。
+入口：http://192.168.31.251:8318/planner
+
+原容器与一致性数据备份保留；CPA未重启。真实后端场景计算和独立版本/资源验收通过。见 [上线记录](deployment.json)、[独立验收](deployment-independent.md) 及 [DAG](dag.md)。

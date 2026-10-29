@@ -1,0 +1,29 @@
+{
+  "checks": [
+    {
+      "name": "real-worker-ranking",
+      "rows": [
+        "Alpha 5x587.91267.912470.329623.4940.000",
+        "Beta 20x587.91267.912470.329623.4940.000"
+      ]
+    },
+    {
+      "name": "mobile-no-overflow",
+      "pass": true
+    },
+    {
+      "name": "invalidation",
+      "pass": true
+    },
+    {
+      "name": "worker-cancel",
+      "pass": true
+    },
+    {
+      "name": "401-login",
+      "pass": true
+    }
+  ],
+  "errors": [],
+  "readOnly": true
+}
