@@ -1,0 +1,216 @@
+{
+  "time": "2026-10-29T23:03:55.961Z",
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/api/v1/startup/status"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/startup/status"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/usage/identities"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/status"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/version"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/usage/api-keys/options"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/version"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/usage/identities"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/status"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/version"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/usage/api-keys/options"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/quota/cache"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/a/quota-floor"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/a/reset-schedule"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/b/quota-floor"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/b/reset-schedule"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/unknown/quota-floor"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/unknown/reset-schedule"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/missing/quota-floor"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/missing/reset-schedule"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/stale/quota-floor"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/stale/reset-schedule"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/startup/status"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/startup/status"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/usage/identities"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/status"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/version"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/usage/api-keys/options"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/version"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/usage/identities"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/status"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/version"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/usage/api-keys/options"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/quota/cache"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/a/quota-floor"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/a/reset-schedule"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/b/quota-floor"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/b/reset-schedule"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/unknown/quota-floor"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/unknown/reset-schedule"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/missing/quota-floor"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/missing/reset-schedule"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/stale/quota-floor"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/stale/reset-schedule"
+    }
+  ],
+  "errors": [],
+  "checks": [
+    {
+      "initial": "KEEPER\n返回CPA\n中\n账号优先规划\n账号优先规划\n\n选择参与账号，计算模型内的最优使用顺序。只读，不修改账号或卡。\n\n参与账号\nAlpha 5x (pro-5x, 权重 1（5x）)\n周剩余：30% · 重置：2026/10/31 07:03:56 · 卡：1 · 停派：无 卡 card-credentials 到期 2026/11/1 07:03:56\nBeta 20x (pro-20x, 权重 2（20x）)\n周剩余：80% · 重置：2026/11/6 07:03:56 · 卡：1 · 停派：无 卡 card-credentials 到期 2026/11/1 07:03:56\nunknown (pro, 权重 未知)\n周剩余：80% · 重置：2026/11/6 07:03:56 · 卡：1 · 停派：无 卡 card-credentials 到期 2026/11/1 07:03:56账号额度权重未知\nmissing (pro-5x, 权重 1（5x）)\n周剩余：缺失 · 重置：缺失 · 卡：1 · 停派：无 卡 card-credentials 到期 2026/11/1 07:03:56quota cache missing、缓存观察时间缺失、weekly quota missing、短窗额度信息缺失\nstale (pro-5x, 权重 1（5x）)\n周剩余：80% · 重置：2026/11/6 07:03:56 · 卡：1 · 停派：无 卡 card-credentials 到期 2026/11/1 07:03:56quota cache expired\n计算参数\n模型\nEffort\n每日需求（5x周百分点）\n从历史估计需求\n来源：手填\n不确定性 %\n结束时间\n时间槽（小时）\n允许使用卡（假设恢复周/短窗100%，用后人工恢复）\n恢复延迟（分钟）\n短窗容量（加权周百分点）\nAlpha 5x\nBeta 20x\n计算优先账号\n© 2026\nCPA Usage Keeper\n·\nLicense\n·\nCLIProxyAPI Integration\nPowered By\nWillxup\n·\nVersion: fixture"
+    },
+    {
+      "wasm": "http://127.0.0.1:5196/node_modules/highs/build/highs.wasm?import&url",
+      "status": 200
+    }
+  ],
+  "sha": {
+    "AccountPlanner.tsx": "1fde6bc5110b83e5188fcc330bdf345795049d5ef11bfe39e731a61a3f04a340",
+    "AccountPlanner.module.scss": "3fbf7d3839239f1bf6ab4f18511b5833b779538ad13d6d4cccd830f58e6dd0ec",
+    "data.ts": "7a943c240476e02b6fb7650a0ac6264e2c232c15deeb147ef9992b5f25f6bd7f",
+    "solver.ts": "743944fcd9d3c0a1540c3e07c825801def855976b7cd19364fbdba344e100c5f",
+    "runner.ts": "5dcacbda1e3bf7e8e84553411cd636f27b6b0b2e80f1cc7e7947bd889320fca0",
+    "planner.worker.ts": "ce002357f09ef70a2fa03b08404a46775f1730a9bb578e8056683daf4ce24067"
+  },
+  "failure": "TimeoutError: locator.waitFor: Timeout 60000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('heading', { name: /结果：/ }) to be visible\u001b[22m\n"
+}

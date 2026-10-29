@@ -1,0 +1,118 @@
+{
+  "checks": [
+    {
+      "name": "real-worker-ranking",
+      "rows": [
+        "Alpha 5x587.91267.912470.329623.4940.000",
+        "Beta 20x587.91267.912470.329623.4940.000"
+      ]
+    },
+    {
+      "name": "mobile-no-overflow",
+      "pass": true
+    },
+    {
+      "name": "invalidation",
+      "pass": true
+    },
+    {
+      "name": "worker-cancel",
+      "pass": true
+    },
+    {
+      "name": "401-login",
+      "pass": true
+    }
+  ],
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/api/v1/startup/status"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/usage/identities"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/status"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/version"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/usage/api-keys/options"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/version"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/quota/cache"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/a/quota-floor"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/a/reset-schedule"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/b/quota-floor"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/b/reset-schedule"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/bad/quota-floor"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/bad/reset-schedule"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/usage/identities"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/quota/cache"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/a/quota-floor"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/a/reset-schedule"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/b/quota-floor"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/b/reset-schedule"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/bad/quota-floor"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/bad/reset-schedule"
+    }
+  ],
+  "errors": []
+}

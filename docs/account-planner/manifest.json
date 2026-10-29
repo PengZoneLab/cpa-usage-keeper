@@ -1,0 +1,36 @@
+{
+  "baseline": "ae2be0c3c8af76ca859e301e5311d6c0522ec655",
+  "branch": "feat/account-optimal-planner-20261030",
+  "worktree": "/Users/ly/Documents/coderepo/cpa-usage-keeper-optimal-planner",
+  "committed": false,
+  "pushed": false,
+  "files": {
+    "docs/account-planner/browser-smoke.mjs": "e2d0224346f8aa1a167d103f0ed13e9f0af17c6430601b3c3910bef2a5bec726",
+    "internal/api/test/router_test.go": "3b38ad3b42b608651edc911d3a6f79838a9dd799e02bf9c01de744b576f0bf6d",
+    "web/package-lock.json": "2ee71623e3e40671d1e3aa8dafe4d686aad0f62accfe9ea2507bb0665861597b",
+    "web/package.json": "7674067e4f50ccfb9452d391aebd996550c8de0db05ed3a27b378bb7c945fc08",
+    "web/public/third-party-notices.txt": "22dc3fd9625cde19caf641316a8f045b95a4983692d6b00c8b9addfb56026726",
+    "web/src/features/account-planner/AccountPlanner.module.scss": "548d959416ff49d6f05e5613763d5624364ba5630c15cb49329b8818df80acaf",
+    "web/src/features/account-planner/AccountPlanner.test.tsx": "2f91d10c910e28a802607a6ccb5a0f85f999d06bd65aac7c1046e6deb7c6e9d2",
+    "web/src/features/account-planner/AccountPlanner.tsx": "d1ca95370bb0ad723d0b2f58bc534c0734256f2bb18fd54be9957c4f5e0c3c25",
+    "web/src/features/account-planner/data.test.ts": "50f45bfd9ce200f3c06f2a5dfa93269ca9f89e177cf4902b948388d2d728a406",
+    "web/src/features/account-planner/data.ts": "7a943c240476e02b6fb7650a0ac6264e2c232c15deeb147ef9992b5f25f6bd7f",
+    "web/src/features/account-planner/planner.worker.ts": "ce002357f09ef70a2fa03b08404a46775f1730a9bb578e8056683daf4ce24067",
+    "web/src/features/account-planner/runner.ts": "5dcacbda1e3bf7e8e84553411cd636f27b6b0b2e80f1cc7e7947bd889320fca0",
+    "web/src/features/account-planner/solver.independent.test.ts": "7ca6a2b8dff64f8d7e40607864b1cba516769c87d14a0f0e88954e7a38dcd8e6",
+    "web/src/features/account-planner/solver.test.ts": "8a1837f3320dab31a496319d45588cde16676837615617ffbab7992ed8eccf28",
+    "web/src/features/account-planner/solver.ts": "743944fcd9d3c0a1540c3e07c825801def855976b7cd19364fbdba344e100c5f",
+    "web/src/features/account-planner/types.ts": "8fce8489bd7971847c15bd0a71c4930c6d3cd1bca94e6276fd23dbd24bb3d351",
+    "web/src/i18n/index.ts": "b13a10ac75acdcad8b84dd83ff8776da4255d3706fdaecb36325c3cef644a611",
+    "web/src/lib/usageNavigation.ts": "8cbae40f1d6eb797c60ee9bda84b337a11f30bc93ac38506d96ded3275617678",
+    "web/src/pages/UsagePage.tsx": "862184f95d501c3b8207bb60b2bee8b7459eab15d74931780c4700ca26b587f3",
+    "web/src/pages/test/UsagePage.logic.test.ts": "cca9d0017860f2fdeff06a57aede4aa4411fd45b8fa9bf7f39101656454c9963"
+  },
+  "build": {
+    "antigravity-DvGkpdRw.svg": "0b911f0ba819e5a4f4c1d59f28a6ead23f65cfdc86b0a41b380a9fc09498e383",
+    "highs-CTQpMom3.wasm": "f13134e3e335e7bad984ff12abeb41e86e0eeeb1752ae8a85322cc6839df8acd",
+    "index-Cb805qTM.css": "37099900d50dff691784b09f6b77ac08c05e7b9269eba3025daccf89a53d0ac2",
+    "index-Dh0pvJB6.js": "f8b080722bd4d7157db483252d5f352cc6154e1eb30e3bddbb6c5c9c5229c1de",
+    "planner.worker-gKon_wmO.js": "514a69472a49959468a49bbc2d6795b8917e2ea57abe46565e244e4833aeec95"
+  }
+}

@@ -380,6 +380,7 @@ func TestSubpathStaticRoutesServeOnlyUnderPrefix(t *testing.T) {
 	}{
 		{path: "/cpa/", statusCode: http.StatusOK, contains: `window.__APP_BASE_PATH__ = "/cpa";`},
 		{path: "/cpa/dashboard", statusCode: http.StatusOK, contains: `window.__APP_BASE_PATH__ = "/cpa";`},
+		{path: "/cpa/planner", statusCode: http.StatusOK, contains: `window.__APP_BASE_PATH__ = "/cpa";`},
 		{path: "/cpa/assets/app.js", statusCode: http.StatusOK, contains: "console.log('ok')"},
 		{path: "/cpa/missing.html", statusCode: http.StatusOK, contains: `window.__APP_BASE_PATH__ = "/cpa";`},
 		{path: "/foo", statusCode: http.StatusNotFound},

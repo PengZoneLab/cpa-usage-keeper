@@ -1,0 +1,55 @@
+{
+  "project": "cpa-keeper-account-planner",
+  "release": "2026-10-30-072002",
+  "title": "CPA Keeper · 账号优先消耗求解",
+  "summary": "独立页面选择参与账号，按 5x:20x=1:2 的加权周额度，结合自然重置、卡到期及停派约束计算推荐。1650项前端测试及独立数学、界面验收通过。截图为合成账号，结果只在公开假设的有限事件模型内最优；代码未提交、未部署。",
+  "version": "未提交；AccountPlanner d1ca95370bb0；solver 743944fcd9d3；基线 ae2be0c3c8af",
+  "screenshots": [
+    {
+      "path": "/Users/ly/Documents/coderepo/cpa-usage-keeper-optimal-planner/docs/account-planner/developer-desktop.png",
+      "title": "桌面：账号选择与数学结果",
+      "caption": "N8R2／独立UI R3复验使用最终生产构建：真实WASM生成两账号排名，合成账号并列最优，按已确认规则推荐Alpha；展示公式与假设。",
+      "node": "N8R2",
+      "version": "未提交；AccountPlanner d1ca95370bb0；solver 743944fcd9d3；基线 ae2be0c3c8af"
+    },
+    {
+      "path": "/Users/ly/Documents/coderepo/cpa-usage-keeper-optimal-planner/docs/account-planner/developer-mobile.png",
+      "title": "手机：390px布局",
+      "caption": "N8R2／独立UI R3复验：390px页面无横向溢出，保留账号、参数和结果；原图未缩放，账号均为验收fixture。",
+      "node": "N8R2",
+      "version": "未提交；AccountPlanner d1ca95370bb0；solver 743944fcd9d3；基线 ae2be0c3c8af"
+    }
+  ],
+  "attachments": [
+    {
+      "path": "/Users/ly/Documents/coderepo/cpa-usage-keeper-optimal-planner/docs/account-planner/final-acceptance.md",
+      "title": "最终验收",
+      "description": "完成状态、版本与未部署边界"
+    },
+    {
+      "path": "/Users/ly/Documents/coderepo/cpa-usage-keeper-optimal-planner/docs/account-planner/dag.md",
+      "title": "DAG与Loop记录",
+      "description": "目标依赖、负责人、轮次和证据"
+    },
+    {
+      "path": "/Users/ly/Documents/coderepo/cpa-usage-keeper-optimal-planner/docs/account-planner/README.md",
+      "title": "数学模型与使用说明",
+      "description": "完整计划优化、权重、约束及预测限制"
+    },
+    {
+      "path": "/Users/ly/Documents/coderepo/cpa-usage-keeper-optimal-planner/docs/account-planner/independent-math-r1.md",
+      "title": "独立数学验收",
+      "description": "8项独立反例验收"
+    },
+    {
+      "path": "/Users/ly/Documents/coderepo/cpa-usage-keeper-optimal-planner/docs/account-planner/independent-ui-r3.md",
+      "title": "独立界面验收",
+      "description": "真实WASM、取消、401和手机布局"
+    },
+    {
+      "path": "/Users/ly/Documents/coderepo/cpa-usage-keeper-optimal-planner/docs/account-planner/final-sha256.txt",
+      "title": "最终源文件指纹",
+      "description": "未提交版本的文件SHA-256"
+    }
+  ]
+}

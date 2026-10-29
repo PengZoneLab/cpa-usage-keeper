@@ -6,6 +6,7 @@ export const USAGE_TAB_OPTIONS = [
   'credentials',
   'ai-provider',
   'settings',
+  'planner',
 ] as const;
 
 export type UsageTab = (typeof USAGE_TAB_OPTIONS)[number];
@@ -19,6 +20,7 @@ const USAGE_TAB_PATHS: Record<UsageTab, string> = {
   'credentials': '/credentials',
   'ai-provider': '/ai-provider',
   settings: '/settings',
+  planner: '/planner',
 };
 
 const USAGE_PATH_TABS = new Map<string, UsageTab>(

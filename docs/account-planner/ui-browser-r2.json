@@ -1,0 +1,96 @@
+{
+  "time": "2026-10-29T23:12:29.702Z",
+  "requests": [
+    {
+      "method": "GET",
+      "path": "/api/v1/startup/status"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/usage/identities"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/status"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/version"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/usage/api-keys/options"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/version"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/quota/cache"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/a/quota-floor"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/a/reset-schedule"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/b/quota-floor"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/b/reset-schedule"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/unknown/quota-floor"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/unknown/reset-schedule"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/missing/quota-floor"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/missing/reset-schedule"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/stale/quota-floor"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/credentials/stale/reset-schedule"
+    }
+  ],
+  "errors": [],
+  "checks": [
+    {
+      "initial": "KEEPER\n返回CPA\n中\n账号优先规划\n账号优先规划\n\n选择参与账号，计算模型内的最优使用顺序。只读，不修改账号或卡。\n\n重读账号快照\n\n5x 满周 = 100；20x 满周 = 200 加权周百分点。 读取时间：2026/10/30 07:12:30\n\n参与账号 2/5\nAlpha 5x\npro-5x · 权重 1\n周剩余 30% · 下次重置 2026/10/31 07:12:30\n卡片 1 · 停派时间 未设置\n卡 1 · 到期 2026/11/1 07:12:30\nBeta 20x\npro-20x · 权重 2\n周剩余 80% · 下次重置 2026/11/6 07:12:30\n卡片 1 · 停派时间 未设置\n卡 1 · 到期 2026/11/1 07:12:30\nunknown\npro · 权重 —\n周剩余 80% · 下次重置 2026/11/6 07:12:30\n卡片 1 · 停派时间 未设置\n卡 1 · 到期 2026/11/1 07:12:30\n账号额度权重未知\nmissing\npro-5x · 权重 1\n周剩余 — · 下次重置 未知\n卡片 1 · 停派时间 未设置\n卡 1 · 到期 2026/11/1 07:12:30\nquota cache missing；缓存观察时间缺失；weekly quota missing；短窗额度信息缺失\nstale\npro-5x · 权重 1\n周剩余 80% · 下次重置 2026/11/6 07:12:30\n卡片 1 · 停派时间 未设置\n卡 1 · 到期 2026/11/1 07:12:30\nquota cache expired\n计算参数\n模型\nEffort\n每日需求（5x周百分点）\n从历史估计需求\n\n尚无需求预测。历史不足时可填写情景需求。\n\n不确定性 %\n结束时间\n时间槽（小时）\n短时额度与用卡场景\n\n短窗百分比与周额度基准不同。请填写短窗满额相当于多少加权周百分点；这属于情景假设。\n\nAlpha 5x\nBeta 20x\n推演用卡后人工恢复：假设周额度及短窗恢复100%\n\n只推演，不实际用卡或启用账号；现有停派截止始终有效。\n\n计算优先账号\n© 2026\nCPA Usage Keeper\n·\nLicense\n·\nCLIProxyAPI Integration\nPowered By\nWillxup\n·\nVersion: fixture"
+    },
+    {
+      "wasm": "http://127.0.0.1:5196/assets/highs-CTQpMom3.wasm",
+      "status": 200
+    }
+  ],
+  "sha": {
+    "AccountPlanner.tsx": "d1ca95370bb0ad723d0b2f58bc534c0734256f2bb18fd54be9957c4f5e0c3c25",
+    "AccountPlanner.module.scss": "548d959416ff49d6f05e5613763d5624364ba5630c15cb49329b8818df80acaf",
+    "data.ts": "7a943c240476e02b6fb7650a0ac6264e2c232c15deeb147ef9992b5f25f6bd7f",
+    "solver.ts": "743944fcd9d3c0a1540c3e07c825801def855976b7cd19364fbdba344e100c5f",
+    "runner.ts": "5dcacbda1e3bf7e8e84553411cd636f27b6b0b2e80f1cc7e7947bd889320fca0",
+    "planner.worker.ts": "ce002357f09ef70a2fa03b08404a46775f1730a9bb578e8056683daf4ce24067"
+  },
+  "failure": "TimeoutError: locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByText('使用计划', { exact: true })\u001b[22m\n"
+}

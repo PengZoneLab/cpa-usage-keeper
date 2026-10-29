@@ -1,0 +1,22 @@
+{
+  "url": "http://192.168.31.154:19780/projects/cpa-keeper-account-planner/releases/2026-10-30-072002/",
+  "checks": [
+    {
+      "src": "/projects/cpa-keeper-account-planner/releases/2026-10-30-072002/images/001.png",
+      "loaded": true,
+      "width": 1440,
+      "height": 2048
+    },
+    {
+      "src": "/projects/cpa-keeper-account-planner/releases/2026-10-30-072002/images/002.png",
+      "loaded": true,
+      "width": 390,
+      "height": 3076
+    }
+  ],
+  "captions": [
+    "桌面：账号选择与数学结果查看原图 ↗N8R2／独立UI R3复验使用最终生产构建：真实WASM生成两账号排名，合成账号并列最优，按已确认规则推荐Alpha；展示公式与假设。N8R2 · 未提交；AccountPlanner d1ca95370bb0；solver 743944fcd9d3；基线 ae2be0c3c8af",
+    "手机：390px布局查看原图 ↗N8R2／独立UI R3复验：390px页面无横向溢出，保留账号、参数和结果；原图未缩放，账号均为验收fixture。N8R2 · 未提交；AccountPlanner d1ca95370bb0；solver 743944fcd9d3；基线 ae2be0c3c8af"
+  ],
+  "narrowOverflow": false
+}

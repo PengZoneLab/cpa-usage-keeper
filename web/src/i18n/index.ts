@@ -20,6 +20,7 @@ const getInitialLanguage = (): SupportedLanguage => {
 const resources = {
   en: {
     translation: {
+      planner: { title: 'Account planner', description: 'Choose participating accounts and calculate an optimal plan within the model. Read-only: accounts and cards are not changed.', accounts: 'Participating accounts', parameters: 'Plan parameters' },
       reset_schedule: {
         "title": "Codex reset cards",
         "hint": "Saved independently. Both options are off by default. New requests stop 3 minutes before the deadline. In the final minute, remaining requests are cancelled before using the card. If stopping cannot be confirmed by the deadline, the card is not used. The account stays stopped. Earlier manual deadlines are preserved.",
@@ -1032,6 +1033,7 @@ const resources = {
   },
   zh: {
     translation: {
+      planner: { title: '账号优先规划', description: '选择参与账号，计算模型内的最优使用顺序。只读，不修改账号或卡。', accounts: '参与账号', parameters: '计算参数' },
       reset_schedule: {
         "title": "Codex 重置卡",
         "hint": "独立保存，两项默认关闭。最晚用卡时间前 3 分钟停止新请求，最后一分钟取消剩余请求并用卡；到点未确认停止则不用卡。重置后保持停用，保留已有更早的人工截止时间。",
@@ -2044,6 +2046,7 @@ const resources = {
   },
   'zh-TW': {
     translation: {
+      planner: { title: '帳號優先規劃', description: '選擇參與帳號，計算模型內的最優使用順序。唯讀，不修改帳號或卡。', accounts: '參與帳號', parameters: '計算參數' },
       reset_schedule: {
         "title": "Codex 重置卡",
         "hint": "獨立儲存，兩項預設關閉。最晚用卡時間前 3 分鐘停止新請求，最後一分鐘取消剩餘請求並用卡；到點未確認停止則不用卡。重置後保持停用，保留既有更早的人工截止時間。",
