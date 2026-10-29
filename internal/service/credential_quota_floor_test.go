@@ -9,6 +9,7 @@ import (
 	"gorm.io/gorm"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 type floorFake struct {
@@ -184,5 +185,80 @@ func TestQuotaFloorDecision(t *testing.T) {
 				t.Fatalf("got %v %v", low, complete)
 			}
 		})
+	}
+}
+
+func TestDispatchDeadlineBoundary(t *testing.T) {
+	now := time.Now()
+	if dispatchExpired(&now, now.Add(-time.Nanosecond)) || !dispatchExpired(&now, now) || !dispatchExpired(&now, now.Add(time.Nanosecond)) || dispatchExpired(nil, now) {
+		t.Fatal("deadline boundary")
+	}
+}
+
+func TestDispatchDeadlineOrQuotaAndClear(t *testing.T) {
+	s, f, _ := floorSetup(t)
+	ctx := context.Background()
+	past, future := time.Now().Add(-time.Hour), time.Now().Add(time.Hour)
+	_, err := s.Set(ctx, "one", nil, &past)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.checkErr = errors.New("quota offline")
+	if err := s.Reconcile(ctx, "one"); err != nil {
+		t.Fatal(err)
+	}
+	p, _ := s.Get(ctx, "one")
+	if !p.Paused || p.State != "expired" || len(f.calls) != 1 {
+		t.Fatalf("deadline-only pause: %+v %v", p, f.calls)
+	}
+	if !errors.Is(s.prepareManual(ctx, "test.jsonone", "one", false), ErrQuotaFloorBlocked) {
+		t.Fatal("manual enable bypassed deadline")
+	}
+	// Legacy API edits preserve the deadline and must not release its pause.
+	_, _ = s.Set(ctx, "one", nil)
+	p, _ = s.Get(ctx, "one")
+	if p.DispatchUntil == nil || len(f.calls) != 1 {
+		t.Fatal("legacy edit cleared deadline")
+	}
+	_, _ = s.Set(ctx, "one", floorPtr(10), &future)
+	f.checkErr = nil
+	_ = s.Reconcile(ctx, "one")
+	if len(f.calls) != 1 {
+		t.Fatal("future deadline bypassed low quota")
+	}
+	// Removing deadline must not override quota protection.
+	_, _ = s.Set(ctx, "one", floorPtr(10), nil)
+	_ = s.Reconcile(ctx, "one")
+	if len(f.calls) != 1 {
+		t.Fatal("clearing deadline released low quota")
+	}
+	f.rows = []quota.QuotaRow{{Key: "5h", UsedPercent: floorPtr(0)}, {Key: "weekly", UsedPercent: floorPtr(0)}}
+	_ = s.Reconcile(ctx, "one")
+	if len(f.calls) != 2 || f.calls[1] {
+		t.Fatal("eligible account did not recover")
+	}
+}
+
+func TestDispatchDeadlineRestartFailureAndManualHold(t *testing.T) {
+	s, f, db := floorSetup(t)
+	ctx := context.Background()
+	past := time.Now().Add(-time.Hour)
+	_, _ = s.Set(ctx, "one", nil, &past)
+	f.applyErr = errors.New("CPA offline")
+	if s.Reconcile(ctx, "one") == nil {
+		t.Fatal("expected failure")
+	}
+	s = NewQuotaFloorService(db, f, f, &CredentialMutationLocks{}, nil, nil)
+	f.applyErr = nil
+	if err := s.Reconcile(ctx, "one"); err != nil {
+		t.Fatal(err)
+	}
+	if len(f.calls) != 1 || !f.calls[0] {
+		t.Fatal("restart did not retry")
+	}
+	_ = s.prepareManual(ctx, "test.jsonone", "one", true)
+	_, _ = s.Set(ctx, "one", nil, nil)
+	if len(f.calls) != 1 {
+		t.Fatal("clear released manual hold")
 	}
 }

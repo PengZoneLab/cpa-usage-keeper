@@ -321,6 +321,7 @@ func orderedMigrations() []databaseMigration {
 		{version: "20261020_add_auth_session_oidc_identity", run: addAuthSessionOIDCIdentityMigration},
 		{version: migrationAddUsageEventEffectiveServiceTier, run: addUsageEventEffectiveServiceTierMigration},
 		{version: "20261028_credential_quota_floor", run: addCredentialQuotaFloor},
+		{version: "20261029_credential_dispatch_until", run: addCredentialQuotaFloor},
 	}
 }
 

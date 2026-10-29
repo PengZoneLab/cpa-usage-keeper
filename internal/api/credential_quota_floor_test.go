@@ -33,6 +33,9 @@ func TestQuotaFloorRoutesPersistValidateAndIsolate(t *testing.T) {
 		status             int
 	}{
 		{"GET", "/credentials/test/quota-floor", "", 200},
+		{"PUT", "/credentials/test/quota-floor", `{"minimum_percent":null,"dispatch_until":"2026-10-30T12:00:00+08:00"}`, 200},
+		{"PUT", "/credentials/test/quota-floor", `{"minimum_percent":null,"dispatch_until":"2026-10-30T12:00"}`, 400},
+		{"PUT", "/credentials/test/quota-floor", `{"minimum_percent":null,"dispatch_until":123}`, 400},
 		{"PUT", "/credentials/test/quota-floor", `{}`, 400},
 		{"PUT", "/credentials/test/quota-floor", `{"minimum_percent":"10"}`, 400},
 		{"PUT", "/credentials/test/quota-floor", `{"minimum_percent":101}`, 400},
@@ -48,7 +51,7 @@ func TestQuotaFloorRoutesPersistValidateAndIsolate(t *testing.T) {
 		}
 	}
 	p, err := floor.Get(context.Background(), "test")
-	if err != nil || p.MinimumPercent == nil || *p.MinimumPercent != 10 {
+	if err != nil || p.MinimumPercent == nil || *p.MinimumPercent != 10 || p.DispatchUntil == nil {
 		t.Fatal("not persisted")
 	}
 	// The production router must put this route behind the existing admin guard.

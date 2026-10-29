@@ -113,12 +113,16 @@ const resources = {
         costs_busy: 'Cost statistics are being updated. Please refresh shortly.'
       },
       usage_stats: {
+        dispatch_until_label: "Dispatch deadline",
+        dispatch_until_hint: "Local time ({{timezone}}). Leave blank for no deadline. Stop when this time is reached OR quota reaches the minimum. Checked every minute; in-flight requests may finish.",
+        dispatch_until_invalid: "Enter a valid date and time, or leave blank.",
+        quota_floor_state_expired: "Dispatch deadline reached · paused",
         quota_floor_label: "Minimum remaining quota (%)",
         quota_floor_off: "No limit",
         quota_floor_hint: "Leave blank to turn off. Checked every minute. Pause when any available quota window reaches the limit; resume when all windows recover. In-flight requests can use more quota.",
         quota_floor_invalid: "Enter a number from 0 to 100, or leave blank.",
         quota_floor_load_failed: "Could not load the quota limit. Retry to edit it.",
-        quota_floor_blocked: "Quota is below the limit or unavailable. Refresh quota or change the limit before enabling.",
+        quota_floor_blocked: "The deadline has passed, or quota is below the limit or unavailable. Adjust the deadline or quota limit before enabling.",
         quota_floor_remaining: "Last remaining: {{value}}%",
         quota_floor_keep_disabled: "Keep disabled manually",
         quota_floor_state_off: "Quota limit off",
@@ -1091,12 +1095,16 @@ const resources = {
         costs_busy: '费用统计正在更新，请稍后刷新。'
       },
       usage_stats: {
+        dispatch_until_label: "调度截止时间",
+        dispatch_until_hint: "本地时区（{{timezone}}）。留空不限制。到达截止时间或额度达到下限，任一条件满足即暂停。每分钟检查，在途请求仍可能完成。",
+        dispatch_until_invalid: "请输入有效日期和时间，或留空。",
+        quota_floor_state_expired: "已到调度截止时间 · 已暂停",
         quota_floor_label: "最低剩余额度（%）",
         quota_floor_off: "不限制",
         quota_floor_hint: "留空关闭限制。每分钟检查一次，任一可用额度窗口达到下限即暂停，所有窗口恢复后自动启用。在途请求仍可能消耗额度。",
         quota_floor_invalid: "请输入 0 至 100 的数字，或留空。",
         quota_floor_load_failed: "额度限制加载失败，请重试后编辑。",
-        quota_floor_blocked: "额度低于下限或暂不可用。请刷新额度或调整下限后再启用。",
+        quota_floor_blocked: "已到截止时间、额度低于下限或暂不可用。请调整截止时间、刷新额度或调整下限后再启用。",
         quota_floor_remaining: "上次剩余：{{value}}%",
         quota_floor_keep_disabled: "保持人工停用",
         quota_floor_state_off: "未设置额度限制",
@@ -2069,6 +2077,10 @@ const resources = {
         costs_busy: '費用統計正在更新，請稍後重新整理。'
       },
       usage_stats: {
+        dispatch_until_label: "調度截止時間",
+        dispatch_until_hint: "本地時區（{{timezone}}）。留空不限制。到達截止時間或額度達到下限，任一條件滿足即暫停。每分鐘檢查，進行中的請求仍可能完成。",
+        dispatch_until_invalid: "請輸入有效日期和時間，或留空。",
+        quota_floor_state_expired: "已到調度截止時間 · 已暫停",
         quota_floor_label: "最低剩餘額度（%）",
         quota_floor_off: "不限制",
         quota_floor_hint: "留空關閉限制。每分鐘檢查一次，任一可用額度視窗達到下限即暫停，所有視窗恢復後自動啟用。進行中的請求仍可能消耗額度。",

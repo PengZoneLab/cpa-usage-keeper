@@ -80,7 +80,7 @@ func (s *QuotaFloorService) save(ctx context.Context, p *entities.CredentialQuot
 	p.UpdatedAt = time.Now()
 	return s.db.WithContext(ctx).Save(p).Error
 }
-func (s *QuotaFloorService) Set(ctx context.Context, index string, minimum *float64) (entities.CredentialQuotaFloor, error) {
+func (s *QuotaFloorService) Set(ctx context.Context, index string, minimum *float64, until ...*time.Time) (entities.CredentialQuotaFloor, error) {
 	index = strings.TrimSpace(index)
 	if minimum != nil && (math.IsNaN(*minimum) || math.IsInf(*minimum, 0) || *minimum < 0 || *minimum > 100) {
 		return entities.CredentialQuotaFloor{}, ErrCredentialStatusValidation
@@ -90,23 +90,32 @@ func (s *QuotaFloorService) Set(ctx context.Context, index string, minimum *floa
 		return entities.CredentialQuotaFloor{}, err
 	}
 	defer s.locks.lockCredential(*identity.FileName)()
+	identity, err = s.identity(ctx, index)
+	if err != nil {
+		return entities.CredentialQuotaFloor{}, err
+	}
 	p, err := s.load(ctx, index)
 	if err != nil {
 		return p, err
 	}
-	if p.MinimumPercent == nil && minimum != nil && identity.Disabled != nil && *identity.Disabled && !p.Paused {
+	if p.MinimumPercent == nil && p.DispatchUntil == nil && (minimum != nil || (len(until) > 0 && until[0] != nil)) && identity.Disabled != nil && *identity.Disabled && !p.Paused {
 		p.ManualHold = true
 	}
+	if (p.MinimumPercent == nil) != (minimum == nil) || (minimum != nil && p.MinimumPercent != nil && *minimum != *p.MinimumPercent) {
+		p.WindowKeys = ""
+	}
 	p.MinimumPercent = minimum
-	p.WindowKeys = ""
-	if minimum == nil && p.Paused && !p.ManualHold {
+	if len(until) > 0 {
+		p.DispatchUntil = until[0]
+	}
+	if minimum == nil && p.DispatchUntil == nil && p.Paused && !p.ManualHold {
 		// Clearing the policy releases only a pause owned by this policy.
 		if err = s.apply(ctx, identity, false); err != nil {
 			return p, err
 		}
 		p.Paused = false
 	}
-	if minimum == nil {
+	if minimum == nil && p.DispatchUntil == nil {
 		p.State = "off"
 	} else if p.ManualHold {
 		p.State = "manual"
@@ -140,6 +149,9 @@ func (s *QuotaFloorService) prepareManual(ctx context.Context, name, index strin
 		return err
 	}
 	for _, p := range policies {
+		if !disabled && dispatchExpired(p.DispatchUntil, time.Now()) {
+			return ErrQuotaFloorBlocked
+		}
 		if !disabled && p.MinimumPercent != nil {
 			result, err := s.checker.Check(ctx, quota.CheckRequest{AuthIndex: p.AuthIndex, RequireExplicitPercent: true})
 			low, known, _ := quotaFloorDecision(result.Quota, *p.MinimumPercent)
@@ -155,7 +167,7 @@ func (s *QuotaFloorService) prepareManual(ctx context.Context, name, index strin
 				}
 			}
 
-			if err != nil || !known || low {
+			if err != nil || !known || low || dispatchExpired(p.DispatchUntil, time.Now()) {
 				return ErrQuotaFloorBlocked
 			}
 		}
@@ -165,7 +177,7 @@ func (s *QuotaFloorService) prepareManual(ctx context.Context, name, index strin
 		p.Paused = false
 		if disabled {
 			p.State = "manual"
-		} else if p.MinimumPercent != nil {
+		} else if p.MinimumPercent != nil || p.DispatchUntil != nil {
 			p.State = "pending"
 		} else {
 			p.State = "off"
@@ -246,7 +258,7 @@ func (s *QuotaFloorService) Reconcile(ctx context.Context, index string) error {
 		return err
 	}
 	p, err := s.load(ctx, index)
-	if err != nil || p.MinimumPercent == nil {
+	if err != nil || (p.MinimumPercent == nil && p.DispatchUntil == nil) {
 		return err
 	}
 	if p.ManualHold {
@@ -258,43 +270,52 @@ func (s *QuotaFloorService) Reconcile(ctx context.Context, index string) error {
 		p.State = "manual"
 		return s.save(ctx, &p)
 	}
-	checkCtx, cancel := context.WithTimeout(ctx, 25*time.Second)
-	defer cancel()
-	result, checkErr := s.checker.Check(checkCtx, quota.CheckRequest{AuthIndex: index, RequireExplicitPercent: true})
 	now := time.Now()
 	p.CheckedAt = &now
-	if checkErr != nil {
-		p.State = "unavailable"
-		return s.save(ctx, &p)
-	}
-	low, complete, remaining := quotaFloorDecision(result.Quota, *p.MinimumPercent)
-	var expected []string
-	_ = json.Unmarshal([]byte(p.WindowKeys), &expected)
-	seen := make(map[string]bool)
-	for _, row := range result.Quota {
-		seen[row.Key] = true
-	}
-	for _, key := range expected {
-		if !seen[key] {
-			complete = false
+	expired := dispatchExpired(p.DispatchUntil, now)
+	low, complete := expired, true
+	if !expired && p.MinimumPercent != nil {
+		checkCtx, cancel := context.WithTimeout(ctx, 25*time.Second)
+		defer cancel()
+		result, checkErr := s.checker.Check(checkCtx, quota.CheckRequest{AuthIndex: index, RequireExplicitPercent: true})
+		if dispatchExpired(p.DispatchUntil, time.Now()) {
+			return s.pauseDeadline(ctx, identity, &p)
 		}
-	}
-	for key := range seen {
-		found := false
-		for _, old := range expected {
-			if old == key {
-				found = true
-				break
+		if checkErr != nil {
+			p.State = "unavailable"
+			return s.save(ctx, &p)
+		}
+		var remaining *float64
+		low, complete, remaining = quotaFloorDecision(result.Quota, *p.MinimumPercent)
+		var expected []string
+		_ = json.Unmarshal([]byte(p.WindowKeys), &expected)
+		seen := make(map[string]bool)
+		for _, row := range result.Quota {
+			seen[row.Key] = true
+		}
+		for _, key := range expected {
+			if !seen[key] {
+				complete = false
 			}
 		}
-		if !found {
-			expected = append(expected, key)
+		for key := range seen {
+			found := false
+			for _, old := range expected {
+				if old == key {
+					found = true
+					break
+				}
+			}
+			if !found {
+				expected = append(expected, key)
+			}
 		}
-	}
-	keys, _ := json.Marshal(expected)
-	p.WindowKeys = string(keys)
+		keys, _ := json.Marshal(expected)
+		p.WindowKeys = string(keys)
 
-	p.RemainingPercent = remaining
+		p.RemainingPercent = remaining
+	}
+
 	if low {
 		if !p.Paused {
 			// Durable ownership intent precedes the external write, so restart retries safely.
@@ -312,6 +333,9 @@ func (s *QuotaFloorService) Reconcile(ctx context.Context, index string) error {
 			}
 		}
 		p.State = "paused"
+		if expired {
+			p.State = "expired"
+		}
 	} else if !complete {
 		p.State = "unavailable"
 	} else {
@@ -332,7 +356,7 @@ func (s *QuotaFloorService) Run(ctx context.Context) error {
 	defer ticker.Stop()
 	for {
 		var policies []entities.CredentialQuotaFloor
-		if err := s.db.WithContext(ctx).Where("minimum_percent IS NOT NULL AND manual_hold = ?", false).Find(&policies).Error; err == nil {
+		if err := s.db.WithContext(ctx).Where("(minimum_percent IS NOT NULL OR dispatch_until IS NOT NULL) AND manual_hold = ?", false).Find(&policies).Error; err == nil {
 			// Bound fan-out; one unavailable account must not delay every other account.
 			sem := make(chan struct{}, 4)
 			done := make(chan struct{}, len(policies))
@@ -363,4 +387,25 @@ func (s *QuotaFloorService) Run(ctx context.Context) error {
 		case <-s.wake:
 		}
 	}
+}
+
+func dispatchExpired(until *time.Time, now time.Time) bool {
+	return until != nil && !now.Before(*until)
+}
+
+func (s *QuotaFloorService) pauseDeadline(ctx context.Context, identity entities.UsageIdentity, p *entities.CredentialQuotaFloor) error {
+	p.Paused = true
+	p.State = "pausing"
+	if err := s.save(ctx, p); err != nil {
+		return err
+	}
+	if identity.Disabled == nil || !*identity.Disabled {
+		if err := s.apply(ctx, identity, true); err != nil {
+			p.State = "apply_failed"
+			_ = s.save(ctx, p)
+			return err
+		}
+	}
+	p.State = "expired"
+	return s.save(ctx, p)
 }

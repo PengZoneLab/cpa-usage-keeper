@@ -4,6 +4,7 @@ import "time"
 
 // CredentialQuotaFloor is Keeper-owned policy; CPA metadata sync must not overwrite it.
 type CredentialQuotaFloor struct {
+	DispatchUntil    *time.Time `gorm:"serializer:storageTime" json:"dispatch_until"`
 	WindowKeys       string     `json:"-"`
 	AuthIndex        string     `gorm:"primaryKey" json:"auth_index"`
 	MinimumPercent   *float64   `json:"minimum_percent"`

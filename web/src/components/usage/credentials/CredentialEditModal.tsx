@@ -11,6 +11,12 @@ import { isCredentialStatusToggleSupported } from './CredentialStatusToggle'
 import type { CredentialDetailSelection, CredentialEditChange } from './credentialViewModels'
 import styles from './CredentialSections.module.scss'
 
+function localDateTime(value?: string | null) {
+  if (!value) return ''
+  const date = new Date(value)
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 19)
+}
+
 interface CredentialEditModalProps {
   selection: CredentialDetailSelection
   onClose: () => void
@@ -41,6 +47,7 @@ export function CredentialEditModal({ selection, onClose, onSaveField, onSaved, 
   const [partial, setPartial] = useState(false)
   const [floor, setFloor] = useState<QuotaFloor | null>(null)
   const [minimum, setMinimum] = useState('')
+  const [until, setUntil] = useState('')
   const [floorLoadError, setFloorLoadError] = useState(false)
   const [loadVersion, setLoadVersion] = useState(0)
   const authIndex = identity.identity
@@ -50,6 +57,7 @@ export function CredentialEditModal({ selection, onClose, onSaveField, onSaved, 
     quotaFloorRequest(authIndex).then((policy) => {
       if (!active) return
       setFloor(policy)
+      setUntil(localDateTime(policy.dispatch_until))
       setMinimum(policy.minimum_percent === null ? '' : String(policy.minimum_percent))
       setFloorLoadError(false)
     }).catch(() => { if (active) setFloorLoadError(true) })
@@ -57,7 +65,9 @@ export function CredentialEditModal({ selection, onClose, onSaveField, onSaved, 
   }, [selection.kind, authIndex, identity.is_deleted, loadVersion])
   const parsedMinimum = minimum.trim() === '' ? null : Number(minimum)
   const floorInvalid = parsedMinimum !== null && (!Number.isFinite(parsedMinimum) || parsedMinimum < 0 || parsedMinimum > 100)
-  const floorDirty = floor !== null && parsedMinimum !== floor.minimum_percent
+  const untilInvalid = until !== '' && !Number.isFinite(new Date(until).getTime())
+  const parsedUntil = until === '' || untilInvalid ? null : new Date(until).toISOString()
+  const floorDirty = floor !== null && (parsedMinimum !== floor.minimum_percent || until !== localDateTime(floor.dispatch_until))
   const busyRef = useRef(false)
   const statusSupported = selection.kind === 'credential' || isCredentialStatusToggleSupported(identity.type)
   const readOnly = Boolean(identity.is_deleted)
@@ -66,6 +76,7 @@ export function CredentialEditModal({ selection, onClose, onSaveField, onSaved, 
 
   const save = async () => {
     if (busyRef.current || readOnly || !dirty) return
+    if (untilInvalid) { setError(t('usage_stats.dispatch_until_invalid')); return }
     if (floorInvalid) { setError(t('usage_stats.quota_floor_invalid')); return }
     if (parsedPriority === null) { setError(t('usage_stats.credentials_priority_invalid')); return }
     const changes: CredentialEditChange[] = []
@@ -78,7 +89,7 @@ export function CredentialEditModal({ selection, onClose, onSaveField, onSaved, 
     let completed = 0
     try {
       if (floorDirty) {
-        const updated = await quotaFloorRequest(authIndex, parsedMinimum)
+        const updated = await quotaFloorRequest(authIndex, parsedMinimum, parsedUntil)
         setFloor(updated)
         completed += 1
       }
@@ -136,6 +147,10 @@ export function CredentialEditModal({ selection, onClose, onSaveField, onSaved, 
             value={minimum} placeholder={t('usage_stats.quota_floor_off')} disabled={saving || !floor}
             hint={t('usage_stats.quota_floor_hint')} error={floorInvalid ? t('usage_stats.quota_floor_invalid') : undefined}
             onChange={(event) => setMinimum(event.target.value)} />
+          <Input label={t('usage_stats.dispatch_until_label')} type="datetime-local" step="1"
+            value={until} disabled={saving || !floor} onChange={(event) => setUntil(event.target.value)}
+            hint={t('usage_stats.dispatch_until_hint', { timezone: Intl.DateTimeFormat().resolvedOptions().timeZone })}
+            error={untilInvalid ? t('usage_stats.dispatch_until_invalid') : undefined} />
           {floorLoadError ? <div role="alert" className="error-box">{t('usage_stats.quota_floor_load_failed')}
             <Button variant="secondary" onClick={() => { setFloorLoadError(false); setLoadVersion((value) => value + 1) }}>{t('common.retry')}</Button>
           </div> : !floor ? <p role="status" className="hint">{t('common.loading')}</p> : <>

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"time"
 )
 
 func registerQuotaFloorRoutes(router gin.IRoutes, provider *service.QuotaFloorService) {
@@ -36,7 +37,16 @@ func registerQuotaFloorRoutes(router gin.IRoutes, provider *service.QuotaFloorSe
 			c.JSON(400, gin.H{"error": "minimum_percent must be a number or null"})
 			return
 		}
-		result, err := provider.Set(c.Request.Context(), c.Param("auth_index"), minimum)
+		var until []*time.Time
+		if raw, present := body["dispatch_until"]; present {
+			var value *time.Time
+			if json.Unmarshal(raw, &value) != nil || (value != nil && (value.IsZero() || value.Year() < 1 || value.Year() > 9999)) {
+				c.JSON(400, gin.H{"error": "dispatch_until must be an RFC3339 timestamp with timezone or null"})
+				return
+			}
+			until = append(until, value)
+		}
+		result, err := provider.Set(c.Request.Context(), c.Param("auth_index"), minimum, until...)
 		if err != nil {
 			writeCredentialStatusError(c, err, "quota floor update failed")
 			return

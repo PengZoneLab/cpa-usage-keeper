@@ -65,9 +65,26 @@ describe('credential unified editor', () => {
     await render(save)
     await change(minimumField(), '10')
     await act(async () => button('save').click())
-    expect(quotaFloorRequest).toHaveBeenLastCalledWith('idx/one', 10)
+    expect(quotaFloorRequest).toHaveBeenLastCalledWith('idx/one', 10, null)
     expect(save).not.toHaveBeenCalled()
     expect(onSaved).toHaveBeenCalledTimes(1)
+  })
+  it('saves local deadline as an absolute instant and clears it independently', async () => {
+    await render(async () => undefined)
+    const input = document.querySelector<HTMLInputElement>('input[type="datetime-local"]')!
+    await change(input, '2026-11-01T18:30:00')
+    await act(async () => button('save').click())
+    expect(quotaFloorRequest).toHaveBeenLastCalledWith('idx/one', null, new Date('2026-11-01T18:30:00').toISOString())
+  })
+  it('loads a deadline in local time and clears it while preserving the floor', async () => {
+    vi.mocked(quotaFloorRequest).mockResolvedValue({ ...floorPolicy, minimum_percent: 10, dispatch_until: '2026-11-01T10:30:00Z' })
+    await render(async () => undefined)
+    const input = document.querySelector<HTMLInputElement>('input[type="datetime-local"]')!
+    expect(new Date(input.value).toISOString()).toBe('2026-11-01T10:30:00.000Z')
+    expect(button('save').disabled).toBe(true)
+    await change(input, '')
+    await act(async () => button('save').click())
+    expect(quotaFloorRequest).toHaveBeenLastCalledWith('idx/one', 10, null)
   })
   it('rejects values outside the percentage range', async () => {
     await render(async () => undefined)
@@ -82,7 +99,7 @@ describe('credential unified editor', () => {
     await render(async () => undefined)
     await change(minimumField(), '')
     await act(async () => button('save').click())
-    expect(quotaFloorRequest).toHaveBeenLastCalledWith('idx/one', null)
+    expect(quotaFloorRequest).toHaveBeenLastCalledWith('idx/one', null, null)
   })
   it('keeps the draft and reports a load failure without overwriting the policy', async () => {
     vi.mocked(quotaFloorRequest).mockRejectedValue(new Error('offline'))
