@@ -18,3 +18,7 @@ Linux兼容镜像可启动且加载已有插件，见linux-smoke.json；生产�
 ## 线上指定卡阶段
 
 主干c5e8abff已部署。指定时间用卡：停止新调度先于用卡，目标卡只消费1次，上游reset，已用额度88%→0%，账户仍停用，另一张卡保留。独立Agent确认usage事件未见消费后新请求。原始卡ID/凭据与完整线上快照仅保存在private/。临期案例仍等待真实窗口，不宣称整个N11通过。
+
+## 最终线上验收
+
+两条真实路径独立通过，见independent-production.md。临期目标仅1次、上游reset、额度0、保持停用，其他卡保留；备用卡自然到期未消费。最终scope移除后新Keeper容器hash一致，全部7账户auto关闭且无pending/running。完成审计见completion-audit.md。

@@ -13,7 +13,7 @@
   "readiness_http": 200,
   "keeper_health": "healthy",
   "scope": "exact three-account one-card validation allowlist configured; raw scope private and gitignored",
-  "real_validation": "scheduled case passed; expiry case waiting for real window",
+  "real_validation": "both scheduled and expiry cases independently passed",
   "scheduled_case": {
     "attempts": 1,
     "result_code": "reset",
@@ -21,5 +21,22 @@
     "used_percent_before": 88,
     "used_percent_after": 0,
     "other_card_preserved": true
+  },
+  "expiry_case": {
+    "completed_at": "2026-10-30T02:49:44.211347285+08:00",
+    "target_deadline": "2026-10-30T02:50:20.326157+08:00",
+    "attempts": 1,
+    "result_code": "reset",
+    "used_percent_after": 0,
+    "account_disabled_after": true,
+    "other_card_preserved": true
+  },
+  "final_configuration": {
+    "validation_allowlist_removed": true,
+    "all_codex_auto_policies_off": true,
+    "pending_or_running_tasks": 0,
+    "codex_accounts_checked": 7,
+    "keeper_container": "956580f553200ed2ffa159558677abf314a9db17e765ce14293cd807c9d2ee05",
+    "cpa_restarted_during_finalization": false
   }
 }

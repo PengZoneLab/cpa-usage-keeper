@@ -25,8 +25,8 @@ flowchart TD
  N8["N8 第三轮独立验收 · 已完成"]
  N9["N9 本地目标验收完成 · 已完成"]
  N10["N10 合并主干及线上部署 · 已完成"]
- N11["N11 线上独立复验 · 进行中"]
- N12["N12 最终交付 · 未开始"]
+ N11["N11 线上独立复验 · 已完成"]
+ N12["N12 最终交付 · 已完成"]
  N1 --> N2
  N2 --> N3
  N3 --> N4
@@ -43,8 +43,7 @@ flowchart TD
  N11 --> N12
  classDef done fill:#dcfce7,stroke:#16a34a,color:#14532d
  classDef pending fill:#fff,stroke:#888,color:#222
- class N1,N2,N3,N4,N5,N5a,N6,N7,N8,N9,N10 done
- class N11,N12 pending
+ class N1,N2,N3,N4,N5,N5a,N6,N7,N8,N9,N10,N11,N12 done
 ```
 
 |编号|名称|负责人|依赖|状态|完成标准与证据|轮次|
@@ -60,8 +59,8 @@ flowchart TD
 |N8|第三轮独立验收|acceptance|N7|已完成|independent-keeper-r3.md|3|
 |N9|本地目标验收完成|主 Agent|N8|已完成|所有本地必需关卡通过|3|
 |N10|合并主干及线上部署|主 Agent|N9|已完成|c5e8abff已推送；镜像运行、readyz200、备份保留|1|
-|N11|线上独立复验|acceptance|N10|进行中|指定卡定时已通过；真实临期窗口等待，私有记录|1|
-|N12|最终交付|主 Agent|N11|未开始|等待线上完整证据|1|
+|N11|线上独立复验|acceptance|N10|已完成|independent-production.md：两路径真实各一次、额度恢复、停用、无新增调用|1|
+|N12|最终交付|主 Agent|N11|已完成|completion-audit.md；证据、差异与主干发布核对|1|
 
 ## 时间及保护语义
 
@@ -75,4 +74,4 @@ T 为最晚发起用卡时间；临期 T=到期前10分钟。T-3分钟停止新�
 
 ## 版本与线上边界
 
-Keeper基线固定不变；CPA兼容补丁基于线上v8.0.40提交d946c4fba6fc9a5cfbca1f3d85184d62ad2fb683。主干c5e8abff已推送。线上健康不等于真实卡验收通过；N11仍白色进行中。真实账户/卡ID及运维凭据保存在private/（git与Docker构建均排除）。
+Keeper基线固定不变；CPA兼容补丁基于线上v8.0.40提交d946c4fba6fc9a5cfbca1f3d85184d62ad2fb683。主干c5e8abff已推送。两条真实路径及最终配置已独立验收通过；N11已完成。真实账户/卡ID及运维凭据保存在private/（git与Docker构建均排除）。
