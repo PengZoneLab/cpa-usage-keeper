@@ -60,7 +60,7 @@ export async function loadPlannerSnapshot(signal?: AbortSignal): Promise<Planner
     const stopCandidates = [...taskStops, ...expiryStops, ...dispatchTimes]
     const short = quota?.quota.find(r => r.key.startsWith('rate_limit.') && (seconds(r) ?? 0) > 0 && seconds(r)! < WEEK)
     if (short?.allowed === false || short?.limitReached === true) issues.push('短窗当前限流')
-    if (!short || remaining(short) === null || asMs(short.resetAt) === null) issues.push('短窗额度信息缺失')
+    if (short && (remaining(short) === null || asMs(short.resetAt) === null)) issues.push('短窗额度信息缺失')
     const disabled = Boolean(identity.disabled)
     return { id: identity.identity, name: identity.displayName ?? identity.alias ?? identity.name ?? identity.identity, plan, weight: planWeight(plan), priority: identity.priority ?? 0, remainingPercent: q.remaining, resetAt: q.resetAt, observedAt: refreshedAt, disabled, issues, cards, stopAt: stopCandidates.length ? Math.min(...stopCandidates) : null, minimumPercent: floorResult?.minimum_percent ?? 0, shortRemainingPercent: remaining(short), shortResetAt: asMs(short?.resetAt), shortWindowSeconds: short ? seconds(short) ?? null : null }
   })

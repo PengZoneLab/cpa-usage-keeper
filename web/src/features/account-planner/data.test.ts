@@ -20,6 +20,20 @@ beforeEach(() => {
 })
 afterEach(() => vi.restoreAllMocks())
 describe('read-only snapshot', () => {
+ it('accepts a valid weekly-only account without fabricating a short window', async () => {
+  const cache=await vi.mocked(fetchUsageQuotaCache)([])
+  cache.items[0].quota!.quota=cache.items[0].quota!.quota.filter(r=>r.window?.seconds===604800)
+  const a=(await loadPlannerSnapshot()).accounts[0]
+  expect(a.issues).toEqual([])
+  expect(a.shortWindowSeconds).toBeNull()
+  expect(a.shortRemainingPercent).toBeNull()
+ })
+ it('rejects an explicitly supplied but incomplete short window', async () => {
+  const cache=await vi.mocked(fetchUsageQuotaCache)([])
+  delete cache.items[0].quota!.quota[2].resetAt
+  expect((await loadPlannerSnapshot()).accounts[0].issues).toContain('短窗额度信息缺失')
+ })
+
  it('loads all live credential codex identities, applies actual weight, and excludes review windows', async () => {
   vi.mocked(fetchUsageIdentities).mockResolvedValue({identities:[identity(),identity('b','pro-5x'),identity('unknown','pro'),{...identity('gone'),is_deleted:true},{...identity('ai'),auth_type:2}]})
   const s=await loadPlannerSnapshot()

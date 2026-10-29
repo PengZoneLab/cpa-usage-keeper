@@ -155,7 +155,7 @@ export function AccountPlanner({ onAuthRequired }: { onAuthRequired?: () => void
           <input type="checkbox" checked={selected.includes(a.id)} disabled={loading || !supported(a)} onChange={e => { invalidate(); setSelected(v => e.target.checked ? [...v, a.id] : v.filter(id => id !== a.id)) }} />
           <span className={styles.accountBody}><strong>{a.name}</strong> <span className={styles.muted}>{a.plan || text('未知方案', 'Unknown plan')} · {text('权重', 'Weight')} {a.weight ?? '—'}</span>
             <span>{text('周剩余', 'Weekly remaining')} {a.remainingPercent === null ? '—' : `${a.remainingPercent}%`} · {text('下次重置', 'Next reset')} {date(a.resetAt)}</span>
-            <span className={styles.muted}>{text('卡片', 'Cards')} {a.cards.length} · {text('停派时间', 'Stop dispatch')} {a.stopAt === null ? text('未设置', 'Not set') : date(a.stopAt)}</span>
+            <span className={styles.muted}>{a.shortWindowSeconds === null && text('上游未提供短窗；仅按周额度规划。 ', 'No short window supplied; weekly-only model. ')}{text('卡片', 'Cards')} {a.cards.length} · {text('停派时间', 'Stop dispatch')} {a.stopAt === null ? text('未设置', 'Not set') : date(a.stopAt)}</span>
             {a.cards.map((c, k) => <small key={c.id}>{text('卡', 'Card')} {k + 1} · {text('到期', 'Expires')} {date(c.expiresAt)}</small>)}
             {a.disabled && <span className={styles.error}>{text('账号已停用', 'Account disabled')}</span>}
             {a.issues.length > 0 && <span className={styles.error}>{a.issues.join('；')}</span>}
