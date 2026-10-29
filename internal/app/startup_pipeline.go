@@ -102,6 +102,7 @@ func (a *App) installReadyApp(ready *App) {
 	a.CPAErrors, a.UsageAggregation = ready.CPAErrors, ready.UsageAggregation
 	a.Maintenance = ready.Maintenance
 	a.QuotaFloor = ready.QuotaFloor
+	a.ResetSchedule = ready.ResetSchedule
 	a.MetadataSync, a.QuotaService, a.QuotaAutoRefresh = ready.MetadataSync, ready.QuotaService, ready.QuotaAutoRefresh
 	a.BackupMaintenance, a.RecentUsageCache = ready.BackupMaintenance, ready.RecentUsageCache
 	a.CostReadGate, a.PricingCatalog, a.PricingService = ready.CostReadGate, ready.PricingCatalog, ready.PricingService

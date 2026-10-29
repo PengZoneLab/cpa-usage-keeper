@@ -322,6 +322,7 @@ func orderedMigrations() []databaseMigration {
 		{version: migrationAddUsageEventEffectiveServiceTier, run: addUsageEventEffectiveServiceTierMigration},
 		{version: "20261028_credential_quota_floor", run: addCredentialQuotaFloor},
 		{version: "20261029_credential_dispatch_until", run: addCredentialQuotaFloor},
+		{version: "20261030_reset_schedule", run: addResetSchedule},
 	}
 }
 

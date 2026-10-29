@@ -17,6 +17,7 @@ import (
 )
 
 type ServiceOptions struct {
+	ScheduledCreditAllowlist         map[string][]string
 	RefreshWorkerLimit               int
 	QuotaUpstreamResponsesEnabled    bool
 	UsageHeaderSnapshotFlushInterval time.Duration
@@ -29,8 +30,9 @@ type ServiceOptions struct {
 }
 
 type Service struct {
-	db       *gorm.DB
-	registry ProviderRegistry
+	scheduledCreditAllowlist map[string][]string
+	db                       *gorm.DB
+	registry                 ProviderRegistry
 	// quotaUpstreamResponsesEnabled 控制刷新任务是否把 CPA 转发的完整上游响应写入最新限额缓存。
 	quotaUpstreamResponsesEnabled bool
 
@@ -180,6 +182,7 @@ func NewServiceWithRegistryAndOptions(db *gorm.DB, registry ProviderRegistry, op
 	}
 	refreshContext, refreshCancel := context.WithCancel(context.Background())
 	service := &Service{
+		scheduledCreditAllowlist:           options.ScheduledCreditAllowlist,
 		db:                                 db,
 		registry:                           registry,
 		quotaUpstreamResponsesEnabled:      options.QuotaUpstreamResponsesEnabled,

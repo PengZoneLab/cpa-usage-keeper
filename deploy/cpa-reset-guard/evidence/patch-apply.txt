@@ -1,0 +1,13 @@
+patching file 'sdk/cliproxy/auth/conductor.go'
+patching file 'sdk/cliproxy/auth/conductor_execution.go'
+patching file 'sdk/cliproxy/auth/conductor_home_execution.go'
+patching file 'sdk/cliproxy/auth/conductor_home.go'
+patching file 'sdk/cliproxy/auth/conductor_stream.go'
+patching file 'sdk/cliproxy/auth/conductor_reset_guard.go'
+patching file 'sdk/cliproxy/auth/conductor_reset_guard_test.go'
+patching file 'internal/api/server_management_v8.go'
+patching file 'internal/api/handlers/management/auth_files_fields.go'
+patching file 'internal/api/handlers/management/reset_guard.go'
+patching file 'internal/api/handlers/management/reset_guard_test.go'
+patching file 'internal/runtime/executor/codex_reset_guard_test.go'
+Prepared d946c4fba6fc9a5cfbca1f3d85184d62ad2fb683 at /Users/ly/Documents/coderepo/cpa-usage-keeper-reset-scheduler/deploy/cpa-reset-guard/build/prepared

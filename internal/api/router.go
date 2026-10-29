@@ -56,6 +56,7 @@ type OptionalProviders struct {
 	Quota              QuotaProvider
 	CPAAPIKeys         service.CPAAPIKeyProvider
 	Credentials        service.CredentialsManagementProvider
+	ResetSchedule      *service.ResetScheduleService
 	QuotaFloor         *service.QuotaFloorService
 	CredentialStatus   service.CredentialStatusProvider
 	CredentialPriority service.CredentialPriorityProvider
@@ -149,6 +150,7 @@ func NewRouter(
 	registerCredentialStatusRoutes(adminProtected, credentialStatusProvider)
 	if len(optionalProviders) > 0 {
 		registerQuotaFloorRoutes(adminProtected, optionalProviders[0].QuotaFloor)
+		registerResetScheduleRoutes(adminProtected, optionalProviders[0].ResetSchedule)
 	}
 	registerCredentialPriorityRoutes(adminProtected, credentialPriorityProvider)
 	registerAuthSessionManagementRoutes(adminProtected, authHandler)

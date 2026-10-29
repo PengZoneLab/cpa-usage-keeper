@@ -1,0 +1,19 @@
+{
+  "baseline": "d946c4fba6fc9a5cfbca1f3d85184d62ad2fb683",
+  "generated_at": "2026-10-29T16:31:30.813353+00:00",
+  "patch_sha256": "2fa4a92ee8648aaacf670fefb6655ee3fc951bc8d9507fa1d1a62f965a99afad",
+  "files": {
+    "sdk/cliproxy/auth/conductor.go": "d407017ab51433f545d2918e9c5a85978da6f9039419f0b15b5804d0d007c731",
+    "sdk/cliproxy/auth/conductor_execution.go": "132682da9e3cf39862d10149bece8410a6a33a01a9ce10337b47a0b53f6dc41f",
+    "sdk/cliproxy/auth/conductor_home_execution.go": "e3a24c6b25e6b9cba6faab7159e975b9090726ec5f77c8eafc13a5f144973414",
+    "sdk/cliproxy/auth/conductor_home.go": "8a0fc00725a0bcc7dad6368437432e5349c8bfbb905dd882d354c88873267f5d",
+    "sdk/cliproxy/auth/conductor_stream.go": "01831b2e6b11b2c415447c5e4c47635bf60dea4f39f1cca74788d35fea101cc1",
+    "sdk/cliproxy/auth/conductor_reset_guard.go": "e3410fd219d5c1fb30788b0c8e5521f01a30f71594cc498188512c4ea2a88d15",
+    "sdk/cliproxy/auth/conductor_reset_guard_test.go": "9d1641ed2f66c8352ab50561dd2083d88744401b59b4c199e8ecd81f4cd30202",
+    "internal/api/server_management_v8.go": "4d519cb05003f1cdea6891629cf4806abcba91f2ddf1d8e81e61fe9ac1a060a3",
+    "internal/api/handlers/management/auth_files_fields.go": "4c0dc6d5208682bf681c07009c3415c4d0e7bdfc05041930da22209e394ef3e3",
+    "internal/api/handlers/management/reset_guard.go": "070fee3b812ffd17a01c26439b73ac76b007e4dd529512a0de6783ab800cea8d",
+    "internal/api/handlers/management/reset_guard_test.go": "bc3e022e35d660c50487629724f62e5ab6b89d3a72acd0ce56ea1668694c2fbb",
+    "internal/runtime/executor/codex_reset_guard_test.go": "6548897921aec624707e478ffcaae5c03e4adec0303787f989071b3495624877"
+  }
+}

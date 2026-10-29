@@ -27,3 +27,7 @@ web/dist/
 
 # docs / temp
 .tmp-test.db
+
+# Private acceptance scopes, credentials and compiled compatibility scratch
+/docs/reset-card-scheduler/private/
+/deploy/cpa-reset-guard/build/

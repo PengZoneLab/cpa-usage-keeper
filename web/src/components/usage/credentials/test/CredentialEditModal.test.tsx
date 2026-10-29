@@ -6,10 +6,12 @@ import { CredentialEditModal } from '../CredentialEditModal'
 import { AiProviderCredentialsSection } from '../AiProviderCredentialsSection'
 import { CredentialsSection } from '../CredentialsSection'
 import { createAiProviderSectionProps, createCredentialSectionProps } from './credentialSectionFixtures'
+import { resetScheduleRequest } from '@/lib/resetSchedule'
 import { quotaFloorRequest } from '@/lib/quotaFloor'
 import { ApiError } from '@/lib/api'
 import type { CredentialDetailSelection, CredentialEditChange } from '../credentialViewModels'
 
+vi.mock('@/lib/resetSchedule', () => ({ resetScheduleRequest: vi.fn(async () => ({ auto_before_expiry: false, credits: [], tasks: [], checked_at: null, error: '' })) }))
 vi.mock('@/lib/quotaFloor', () => ({ quotaFloorRequest: vi.fn() }))
 const floorPolicy = { minimum_percent: null, paused: false, manual_hold: false, remaining_percent: null, checked_at: null, state: 'off' }
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
@@ -44,6 +46,23 @@ describe('credential unified editor', () => {
   const render = async (onSaveField: (change: CredentialEditChange) => Promise<void>, type = 'codex') => {
     await act(async () => root.render(<CredentialEditModal selection={selection(type)} onClose={onClose} onSaved={onSaved} onSaveField={onSaveField} />))
   }
+
+  it('keeps reset card controls outside the main form and Enter does not save the account', async () => {
+    vi.mocked(resetScheduleRequest).mockResolvedValueOnce({ auto_before_expiry: false, credits: [{ id: 'card', status: 'available', expiresAt: '2099-12-01T00:00:00Z' }], tasks: [], checked_at: null, error: '' })
+    const save = vi.fn(async () => undefined)
+    await render(save)
+    await change(field('alias'), 'Unsaved alias')
+    const panel = document.querySelector('section[aria-label="reset_schedule.title"]')!
+    const cardTime = panel.querySelector<HTMLInputElement>('input[type="datetime-local"]')!
+    expect(cardTime.closest('form')).toBeNull()
+    await act(async () => cardTime.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })))
+    expect(save).not.toHaveBeenCalled()
+    expect(document.querySelectorAll('form')).toHaveLength(1)
+  })
+  it('does not display reset cards for non-Codex accounts', async () => {
+    await render(async () => undefined, 'openai')
+    expect(document.querySelector('section[aria-label="reset_schedule.title"]')).toBeNull()
+  })
 
   it('loads settings without mutating and cancels an unsaved draft', async () => {
     const save = vi.fn(async () => undefined)

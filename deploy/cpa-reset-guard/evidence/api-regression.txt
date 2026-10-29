@@ -1,0 +1,2 @@
+ok  	github.com/router-for-me/CLIProxyAPI/v8/internal/api/handlers/management	4.392s
+ok  	github.com/router-for-me/CLIProxyAPI/v8/internal/api	1.535s

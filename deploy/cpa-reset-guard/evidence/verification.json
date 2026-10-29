@@ -1,0 +1,16 @@
+{
+  "verified_at": "2026-10-29T16:32:49.541616+00:00",
+  "go": "go version go1.27.3 darwin/arm64",
+  "environment": "Darwin arm64",
+  "source_directory": "/Users/ly/Documents/coderepo/cpa-usage-keeper-reset-scheduler/deploy/cpa-reset-guard/build",
+  "executor": "ui implementation agent (self-check, not independent acceptance)",
+  "result": "passed",
+  "binary_sha256": "f7026362439b5faef3b9f27806e2422ee30325d9b500317e8c88d22493e37aa1",
+  "commands": [
+    "go test -race ./sdk/cliproxy/auth -run ^TestResetGuard -count=1",
+    "go test -race ./internal/runtime/executor -run ^TestCodexResetGuardActualTransports$ -count=1 -timeout=60s",
+    "go test ./sdk/cliproxy/auth -count=1",
+    "go test ./internal/api/handlers/management ./internal/api -count=1",
+    "go build -o cpa-reset-guard ./cmd/server"
+  ]
+}

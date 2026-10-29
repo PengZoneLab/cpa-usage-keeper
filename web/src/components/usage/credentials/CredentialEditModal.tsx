@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useCredentialEnterSave } from './useCredentialEnterSave'
+import { ResetSchedulePanel } from './ResetSchedulePanel'
 import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -175,6 +176,7 @@ export function CredentialEditModal({ selection, onClose, onSaveField, onSaved, 
         {partial && <p className={styles.credentialEditPartial} role="status">{t('usage_stats.credentials_edit_partial')}</p>}
         {error && <p className="error-box" role="alert">{error}</p>}
       </form>
+      {selection.kind === 'credential' && identity.type.trim().toLowerCase() === 'codex' && !readOnly && <ResetSchedulePanel key={authIndex} authIndex={authIndex} />}
     </Modal>
   )
 }

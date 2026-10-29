@@ -20,6 +20,36 @@ const getInitialLanguage = (): SupportedLanguage => {
 const resources = {
   en: {
     translation: {
+      reset_schedule: {
+        "title": "Codex reset cards",
+        "hint": "Saved independently. Both options are off by default. New requests stop 3 minutes before the deadline. In the final minute, remaining requests are cancelled before using the card. If stopping cannot be confirmed by the deadline, the card is not used. The account stays stopped. Earlier manual deadlines are preserved.",
+        "refresh": "Refresh",
+        "auto": "Use this account’s cards 10 minutes before expiry",
+        "timezone": "Schedule in {{timezone}}. A card is consumed only once; the earlier enabled trigger takes precedence.",
+        "empty": "No reset cards returned for this account.",
+        "card": "Card {{id}}",
+        "expires": "Expires {{time}}",
+        "at": "Use no later than",
+        "invalid": "Choose a time at least 3 minutes from now and before this card expires.",
+        "save": "Save card schedule",
+        "cancel": "Cancel card schedule",
+        "checked": "Last checked {{time}}",
+        "saved": "Reset card settings saved.",
+        "load_failed": "Could not load reset card settings. Refresh to retry.",
+        "save_failed": "Could not confirm the saved settings. Refresh before making further changes.",
+        "upstream_error": "Could not verify upstream reset cards. Refresh to retry.",
+        "state_pending": "Pending",
+        "state_running": "Using card",
+        "state_succeeded": "Used successfully",
+        "state_expired": "Expired",
+        "state_unavailable": "Unavailable",
+        "state_uncertain": "Outcome uncertain — automatic retry stopped",
+        "state_failed": "Failed",
+        "state_cancelled": "Cancelled",
+        "source_scheduled": "Scheduled time",
+        "source_expiry": "Before expiry"
+},
+
       common: {
         loading: 'Loading...',
         save: 'Save',
@@ -1002,6 +1032,36 @@ const resources = {
   },
   zh: {
     translation: {
+      reset_schedule: {
+        "title": "Codex 重置卡",
+        "hint": "独立保存，两项默认关闭。最晚用卡时间前 3 分钟停止新请求，最后一分钟取消剩余请求并用卡；到点未确认停止则不用卡。重置后保持停用，保留已有更早的人工截止时间。",
+        "refresh": "刷新",
+        "auto": "在该账户重置卡到期前 10 分钟自动使用",
+        "timezone": "使用时区：{{timezone}}。同一张卡只使用一次；两个选项同时开启时，较早的触发时间优先。",
+        "empty": "该账户暂无重置卡。",
+        "card": "重置卡 {{id}}",
+        "expires": "到期时间：{{time}}",
+        "at": "指定使用时间",
+        "invalid": "请选择至少 3 分钟后、卡片到期之前的时间。",
+        "save": "保存单卡定时",
+        "cancel": "取消单卡定时",
+        "checked": "上次检查：{{time}}",
+        "saved": "重置卡设置已保存。",
+        "load_failed": "无法加载重置卡设置，请刷新重试。",
+        "save_failed": "无法确认设置是否已保存，请刷新后再修改。",
+        "upstream_error": "无法核实上游重置卡状态，请刷新重试。",
+        "state_pending": "等待执行",
+        "state_running": "正在使用",
+        "state_succeeded": "已成功使用",
+        "state_expired": "已过期",
+        "state_unavailable": "不可用",
+        "state_uncertain": "结果不确定，已停止自动重试",
+        "state_failed": "执行失败",
+        "state_cancelled": "已取消",
+        "source_scheduled": "指定时间",
+        "source_expiry": "到期前自动使用"
+},
+
       common: {
         loading: '加载中...',
         save: '保存',
@@ -1984,6 +2044,36 @@ const resources = {
   },
   'zh-TW': {
     translation: {
+      reset_schedule: {
+        "title": "Codex 重置卡",
+        "hint": "獨立儲存，兩項預設關閉。最晚用卡時間前 3 分鐘停止新請求，最後一分鐘取消剩餘請求並用卡；到點未確認停止則不用卡。重置後保持停用，保留既有更早的人工截止時間。",
+        "refresh": "重新整理",
+        "auto": "在此帳戶重置卡到期前 10 分鐘自動使用",
+        "timezone": "使用時區：{{timezone}}。同一張卡只使用一次；兩個選項同時開啟時，較早的觸發時間優先。",
+        "empty": "此帳戶暫無重置卡。",
+        "card": "重置卡 {{id}}",
+        "expires": "到期時間：{{time}}",
+        "at": "指定使用時間",
+        "invalid": "請選擇至少 3 分鐘後、卡片到期之前的時間。",
+        "save": "儲存單卡定時",
+        "cancel": "取消單卡定時",
+        "checked": "上次檢查：{{time}}",
+        "saved": "重置卡設定已儲存。",
+        "load_failed": "無法載入重置卡設定，請重新整理後再試。",
+        "save_failed": "無法確認設定是否已儲存，請重新整理後再修改。",
+        "upstream_error": "無法核實上游重置卡狀態，請重新整理後再試。",
+        "state_pending": "等待執行",
+        "state_running": "正在使用",
+        "state_succeeded": "已成功使用",
+        "state_expired": "已過期",
+        "state_unavailable": "不可用",
+        "state_uncertain": "結果不確定，已停止自動重試",
+        "state_failed": "執行失敗",
+        "state_cancelled": "已取消",
+        "source_scheduled": "指定時間",
+        "source_expiry": "到期前自動使用"
+},
+
       common: {
         loading: '載入中...',
         save: '儲存',

@@ -1,0 +1,99 @@
+{
+  "environment": "isolated full Keeper + synthetic CPA management service",
+  "binary_sha256": "725f015cb5f2c3866928ab0d841d1da1c8afb88ce6ee1507f3513d034e660e3a",
+  "scope": "preliminary run; final source has later validation-allowlist and explicit-enable refinements",
+  "plan": {
+    "target": "2026-10-29T16:39:18.117687+00:00",
+    "expiry": "2026-10-29T16:49:18.117687+00:00",
+    "scheduled": {
+      "auth_index": "qa-scheduled",
+      "auto_before_expiry": false,
+      "checked_at": null,
+      "error": "",
+      "credits": [
+        {
+          "id": "qa-scheduled-card-1",
+          "status": "available",
+          "expiresAt": "2026-10-29T16:49:18.117687+00:00"
+        }
+      ],
+      "tasks": [
+        {
+          "credit_id": "qa-scheduled-card-1",
+          "scheduled_at": "2026-10-30T00:39:18.117687+08:00",
+          "expires_at": "2026-10-30T00:49:18.117687+08:00",
+          "state": "pending",
+          "source": "scheduled",
+          "attempts": 0,
+          "result_code": "",
+          "stopped_at": null,
+          "updated_at": "2026-10-30T00:35:18.123971+08:00"
+        }
+      ]
+    },
+    "auto": {
+      "auth_index": "qa-expiry",
+      "auto_before_expiry": true,
+      "checked_at": null,
+      "error": "",
+      "credits": [
+        {
+          "id": "qa-expiry-card-1",
+          "status": "available",
+          "expiresAt": "2026-10-29T16:49:18.117687+00:00"
+        }
+      ],
+      "tasks": []
+    }
+  },
+  "events": [
+    {
+      "path": "/v8/management/credentials/status",
+      "body": {
+        "name": "qa-scheduled.json",
+        "auth_index": "qa-scheduled",
+        "disabled": true
+      },
+      "time": "2026-10-29T16:36:49.845186+00:00"
+    },
+    {
+      "path": "/v8/management/credentials/status",
+      "body": {
+        "name": "qa-expiry.json",
+        "auth_index": "qa-expiry",
+        "disabled": true
+      },
+      "time": "2026-10-29T16:36:49.845578+00:00"
+    },
+    {
+      "path": "/v8/management/routing/stop-and-cancel",
+      "body": {
+        "auth_index": "qa-scheduled"
+      },
+      "time": "2026-10-29T16:38:49.849139+00:00"
+    },
+    {
+      "path": "/v8/management/routing/stop-and-cancel",
+      "body": {
+        "auth_index": "qa-expiry"
+      },
+      "time": "2026-10-29T16:38:49.849236+00:00"
+    }
+  ],
+  "consumes": [
+    {
+      "account": "qa-scheduled",
+      "card": "qa-scheduled-card-1",
+      "request_id": "9d83e22e-b530-442b-8470-283be4484cb8",
+      "time": "2026-10-29T16:38:49.852196+00:00",
+      "disabled": true
+    },
+    {
+      "account": "qa-expiry",
+      "card": "qa-expiry-card-1",
+      "request_id": "d9e0b136-0094-475b-b3c1-d4ae654bde03",
+      "time": "2026-10-29T16:38:49.852286+00:00",
+      "disabled": true
+    }
+  ]
+}

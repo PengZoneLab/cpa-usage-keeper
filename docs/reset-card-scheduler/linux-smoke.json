@@ -1,0 +1,12 @@
+{
+  "time": "2026-10-29T16:47:38.668676+00:00",
+  "scope": "isolated Linux amd64 container with no production credentials",
+  "keeper_image": "c381f21d6956",
+  "cpa_image": "b7afdb76bd35",
+  "cpa_binary_sha256": "2479a3f6cb9219518a4df2cdbe147c3d0a347fe06ea0d20f6615a8f9a85b44b5",
+  "plugin_loads": [
+    "account-rule-router 0.4.30",
+    "keeper 0.1.0"
+  ],
+  "stop_endpoint_invalid_account_response": "{\"drained\":false,\"error\":\"auth not found\"}\n404"
+}

@@ -1,0 +1,13 @@
+{
+  "time": "2026-10-29T16:48:48.584733+00:00",
+  "source_manifest": "version-r3.json",
+  "go_full_suite": "passed",
+  "frontend_tests": 1608,
+  "race": "service/quota/api targeted passed",
+  "lint": "0 errors, 2 existing UsagePage hook dependency warnings",
+  "typecheck": "passed",
+  "binaries": {
+    "keeper-linux-amd64": "e1e2698e6c66c05bb40c814d22ac8ef5c528a81b537df678efba9d74bc2ed867",
+    "cpa-linux-amd64": "2479a3f6cb9219518a4df2cdbe147c3d0a347fe06ea0d20f6615a8f9a85b44b5"
+  }
+}
