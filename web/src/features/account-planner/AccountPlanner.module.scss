@@ -38,4 +38,35 @@
 .result details { margin: 20px 0; }
 .result ul { padding-left: 24px; line-height: 1.8; font-size: 13px; }
 @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } .header { flex-direction: column; gap: 12px; } .accounts { max-height: 400px; } }
-@media (max-width: 420px) { .form { grid-template-columns: 1fr; } .page { padding-top: 16px; } }
+
+
+.selectionSummary { display: block; color: var(--text-secondary); font-size: 13px; font-weight: 400; overflow-wrap: anywhere; }
+.panel > summary { font-size: 18px; margin-bottom: 8px; }
+.advanced { margin-top: 12px; }
+@media (max-width: 760px) {
+  .page { padding: 8px 0 24px; }
+  .grid { gap: 12px; }
+  .header { flex-direction: row; align-items: center; gap: 8px; }
+  .header h1 { font-size: 20px; margin: 0; }
+  .header p { display: none; }
+  .header > button { min-height: 44px; padding: 8px 10px; }
+  .meta { margin: 0 0 12px !important; font-size: 12px; }
+  .meta span { display: none; }
+  .panel { padding-top: 8px; }
+  .panel h2, .panel > summary { font-size: 16px; margin-bottom: 8px; }
+  .panel > summary { min-height: 44px; }
+  .accounts { max-height: 50vh; }
+  .account { padding: 12px 2px; }
+  .accountBody { font-size: 14px; }
+  .form { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form > label:nth-child(3), .form > div { grid-column: 1 / -1; }
+  .page input:not([type=checkbox]) { font-size: 16px; min-height: 44px; }
+  .page summary { min-height: 44px; }
+  .options { margin-top: 12px; padding-top: 8px; }
+  .options .form { grid-template-columns: 1fr; }
+  .actions { margin: 12px 0; position: sticky; bottom: 0; z-index: 2; padding: 8px 0 max(8px, env(safe-area-inset-bottom)); background: var(--bg-primary); }
+  .actions button { flex: 1; min-height: 44px; }
+  .result { margin: 0 0 16px; padding-top: 12px; }
+  .result h2 { font-size: 18px; }
+  .result details { margin: 4px 0; }
+}

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { Button } from '@/components/ui/Button'
 import { ApiError } from '@/lib/api'
 import type { PlannerAccount, PlannerResult } from './types'
@@ -17,6 +18,7 @@ const supported = (a: PlannerAccount) => !a.disabled && a.weight !== null && a.i
 
 export function AccountPlanner({ onAuthRequired }: { onAuthRequired?: () => void }) {
   const { t, i18n } = useTranslation()
+  const mobile = useMediaQuery('(max-width: 760px)')
   const english = (i18n.resolvedLanguage || i18n.language).startsWith('en')
   const text = (zh: string, en: string) => english ? en : zh
   const [accounts, setAccounts] = useState<PlannerAccount[]>([])
@@ -139,6 +141,16 @@ export function AccountPlanner({ onAuthRequired }: { onAuthRequired?: () => void
   }
 
   const winner = result?.ranking[0]
+  const resultPanel = result && <section className={styles.result} aria-live="polite">
+      <h2>{winner ? `${text('推荐账号：', 'Recommended account: ')}${name(winner.accountId)}` : text('本次未得到账号推荐', 'No recommendation available')}</h2>
+      <p role={result.status === 'optimal' ? 'status' : 'alert'}>{result.message}</p>
+      {winner && <>
+        <p>{text('规划期总量', 'Planning horizon total')} <strong>{winner.score.toFixed(3)}</strong> · {text('本月剩余时间消耗', 'Remaining-month consumption')} {winner.monthScore.toFixed(3)} · {text('领先第二名', 'Margin over second place')} {(result.ranking[1]?.delta ?? 0).toFixed(3)} {text('加权周百分点', 'weighted points')}</p>
+        <details open={!mobile}><summary>{text('比较各账号方案', 'Compare account plans')}</summary><div className={styles.tableWrap}><table className={styles.table}><caption>{text('先使用每个账号时的最优总量', 'Optimal total when each account is used first')}</caption><thead><tr><th>{text('账号', 'Account')}</th><th>Qᵢ</th><th>{text('本月', 'This month')}</th><th>{text('低需求', 'Low demand')}</th><th>{text('高需求', 'High demand')}</th><th>{text('距首选差值', 'Gap to first')}</th></tr></thead><tbody>{result.ranking.map(r => <tr key={r.accountId}><th scope="row">{name(r.accountId)}</th><td>{r.score.toFixed(3)}</td><td>{r.monthScore.toFixed(3)}</td><td>{r.lowScore.toFixed(3)}</td><td>{r.highScore.toFixed(3)}</td><td>{r.delta.toFixed(3)}</td></tr>)}</tbody></table></div></details>
+        <details><summary>{text('使用计划', 'Usage plan')}</summary><p className={styles.muted}>{text('时间段内的额度分配可顺序执行，不表示同时使用账号。用卡动作包含恢复延时。', 'Allocations within an interval can run sequentially. Card actions include the manual resume delay.')}</p><ol className={styles.plan}>{winner.actions.map((a, k) => <li key={k}><time>{date(a.at)} – {date(a.end)}</time><span>{name(a.accountId)} · {a.cardId ? text('用卡并等待人工恢复', 'Use card and await manual resume') : `${a.consumed.toFixed(3)} ${text('加权周百分点', 'weighted points')}`}</span></li>)}</ol></details>
+      </>}
+      <details open={!mobile}><summary>{text('公式与假设', 'Formula and assumptions')}</summary><p className={styles.formula}>Qᵢ = max<sub>π : first = i</sub> Σ<sub>t,j</sub> wⱼ cⱼₜ ; i* = arg max<sub>i</sub> Qᵢ</p><p>{text('比较完整使用计划；w₅ₓ=1，w₂₀ₓ=2，c为实际消耗的周额度百分点。自然重置和用卡只补充库存，不直接计为收益。', 'Compare complete plans: w₅ₓ=1, w₂₀ₓ=2, and c is consumed weekly percentage points. Resets replenish capacity; only consumption contributes to the objective.')}</p><ul>{result.assumptions.map(a => <li key={a}>{a}</li>)}</ul><p className={styles.muted}>{result.slots} {text('事件区间', 'event intervals')} · {(result.elapsedMs / 1000).toFixed(2)}s · {date(result.computedAt)}</p></details>
+    </section>
   return <section className={styles.page} aria-labelledby="planner-title">
     <header className={styles.header}>
       <div><h1 id="planner-title">{t('planner.title')}</h1><p className={styles.muted}>{t('planner.description')}</p></div>
@@ -148,9 +160,10 @@ export function AccountPlanner({ onAuthRequired }: { onAuthRequired?: () => void
     {loading && <p role="status" aria-busy="true">{text('正在读取账号和保护配置…', 'Reading accounts and protection settings…')}</p>}
     {error && <p role="alert" className={styles.error}>{error}</p>}
     {!loading && !accounts.length && <p>{text('没有可用的 Codex 账号。请先在认证文件中同步账号和额度。', 'No Codex accounts found. Sync accounts and quotas in Credentials first.')}</p>}
+    {mobile && resultPanel}
     <div className={styles.grid}>
-      <section className={styles.panel} aria-labelledby="planner-accounts">
-        <h2 id="planner-accounts">{t('planner.accounts')} <span className={styles.muted}>{selected.length}/{accounts.length}</span></h2>
+      <details className={styles.panel} open={!mobile}>
+        <summary id="planner-accounts">{t('planner.accounts')} <span className={styles.muted}>{selected.length}/{accounts.length}</span>{mobile && <span className={styles.selectionSummary}>{selectedAccounts.map(a => a.name).join('、') || text('请选择账号', 'Choose accounts')}</span>}</summary>
         <div className={styles.accounts}>{accounts.map(a => <label className={styles.account} key={a.id}>
           <input type="checkbox" checked={selected.includes(a.id)} disabled={loading || !supported(a)} onChange={e => { invalidate(); setSelected(v => e.target.checked ? [...v, a.id] : v.filter(id => id !== a.id)) }} />
           <span className={styles.accountBody}><strong>{a.name}</strong> <span className={styles.muted}>{a.plan || text('未知方案', 'Unknown plan')} · {text('权重', 'Weight')} {a.weight ?? '—'}</span>
@@ -161,21 +174,23 @@ export function AccountPlanner({ onAuthRequired }: { onAuthRequired?: () => void
             {a.issues.length > 0 && <span className={styles.error}>{a.issues.join('；')}</span>}
           </span>
         </label>)}</div>
-      </section>
+      </details>
       <section className={styles.panel} aria-labelledby="planner-parameters">
         <h2 id="planner-parameters">{t('planner.parameters')}</h2>
         <div className={styles.form}>
           <label>{text('模型', 'Model')}<input value={model} onChange={e => { parameter(setModel, e.target.value); setDemandSource('') }} placeholder="gpt-…" /></label>
           <label>Effort<input value={effort} onChange={e => { parameter(setEffort, e.target.value); setDemandSource('') }} placeholder="high" /></label>
           <label>{text('每日需求（5x周百分点）', 'Daily demand (weighted weekly points)')}<input type="number" min="0" max="10000" value={daily} onChange={e => { parameter(setDaily, e.target.value); setDemandSource(text('手填情景需求', 'Manual scenario demand')) }} /></label>
-          <div><Button variant="secondary" onClick={() => void estimate()} disabled={loading || estimating || !model || !effort || !selected.length}>{estimating ? text('估计中…', 'Estimating…') : text('从历史估计需求', 'Estimate from history')}</Button><p className={styles.muted}>{demandSource || text('尚无需求预测。历史不足时可填写情景需求。', 'No demand estimate. Enter a scenario if history is insufficient.')}</p></div>
+          <div><Button variant="secondary" onClick={() => void estimate()} disabled={loading || estimating || !model || !effort || !selected.length}>{estimating ? text('估计中…', 'Estimating…') : text('从历史估计需求', 'Estimate from history')}</Button><p className={styles.muted}>{demandSource || (mobile ? text('历史不足时可手填', 'Enter demand if history is insufficient') : text('尚无需求预测。历史不足时可填写情景需求。', 'No demand estimate. Enter a scenario if history is insufficient.'))}</p></div>
+        </div>
+        <details className={styles.advanced} open={!mobile}><summary>{text('更多参数', 'More parameters')}</summary><div className={styles.form}>
           <label>{text('不确定性 %', 'Demand uncertainty %')}<input type="number" min="0" max="99" value={uncertainty} onChange={e => parameter(setUncertainty, e.target.value)} /></label>
           <label>{text('结束时间', 'Final included date')}<input type="date" value={endDate} onChange={e => parameter(setEndDate, e.target.value)} /></label>
           <label>{text('时间槽（小时）', 'Decision grid (hours)')}<input type="number" min="1" max="24" value={slotHours} onChange={e => parameter(setSlotHours, e.target.value)} /></label>
-        </div>
+        </div></details>
       </section>
     </div>
-    <details className={styles.options} open>
+    <details className={styles.options} open={!mobile || selectedAccounts.some(a => a.shortWindowSeconds !== null && !short[a.id])}>
       <summary>{text('短时额度与用卡场景', 'Short-window capacity and reset-card scenario')}</summary>
       <p className={styles.muted}>{text('短窗百分比与周额度基准不同。请填写短窗满额相当于多少加权周百分点；这属于情景假设。', 'Short-window percentages use a different capacity. Enter the weighted weekly points represented by a full short window; this is a scenario assumption.')}</p>
       <div className={styles.form}>{selectedAccounts.filter(a => a.shortWindowSeconds !== null).map(a => <label key={a.id}>{a.name}<input type="number" min="0" max="10000" value={short[a.id] ?? ''} placeholder={text('短窗满额对应的加权周百分点', 'Weighted points in a full short window')} onChange={e => { invalidate(); setShort(v => ({ ...v, [a.id]: e.target.value })) }} /></label>)}</div>
@@ -184,15 +199,6 @@ export function AccountPlanner({ onAuthRequired }: { onAuthRequired?: () => void
       {allowCards && <label className={styles.delay}>{text('恢复延迟（分钟）', 'Manual resume delay (minutes)')}<input type="number" min="1" max="1440" value={resume} onChange={e => parameter(setResume, e.target.value)} /></label>}
     </details>
     <div className={styles.actions}><Button onClick={() => void calculate()} disabled={loading || busy || selected.length === 0} loading={busy}>{busy ? text('计算中…', 'Calculating…') : text('计算优先账号', 'Calculate priority account')}</Button>{busy && <Button variant="secondary" onClick={invalidate}>{text('取消', 'Cancel')}</Button>}</div>
-    {result && <section className={styles.result} aria-live="polite">
-      <h2>{winner ? `${text('推荐账号：', 'Recommended account: ')}${name(winner.accountId)}` : text('本次未得到账号推荐', 'No recommendation available')}</h2>
-      <p role={result.status === 'optimal' ? 'status' : 'alert'}>{result.message}</p>
-      {winner && <>
-        <p>{text('规划期总量', 'Planning horizon total')} <strong>{winner.score.toFixed(3)}</strong> · {text('本月剩余时间消耗', 'Remaining-month consumption')} {winner.monthScore.toFixed(3)} · {text('领先第二名', 'Margin over second place')} {(result.ranking[1]?.delta ?? 0).toFixed(3)} {text('加权周百分点', 'weighted points')}</p>
-        <div className={styles.tableWrap}><table className={styles.table}><caption>{text('先使用每个账号时的最优总量', 'Optimal total when each account is used first')}</caption><thead><tr><th>{text('账号', 'Account')}</th><th>Qᵢ</th><th>{text('本月', 'This month')}</th><th>{text('低需求', 'Low demand')}</th><th>{text('高需求', 'High demand')}</th><th>{text('距首选差值', 'Gap to first')}</th></tr></thead><tbody>{result.ranking.map(r => <tr key={r.accountId}><th scope="row">{name(r.accountId)}</th><td>{r.score.toFixed(3)}</td><td>{r.monthScore.toFixed(3)}</td><td>{r.lowScore.toFixed(3)}</td><td>{r.highScore.toFixed(3)}</td><td>{r.delta.toFixed(3)}</td></tr>)}</tbody></table></div>
-        <details><summary>{text('使用计划', 'Usage plan')}</summary><p className={styles.muted}>{text('时间段内的额度分配可顺序执行，不表示同时使用账号。用卡动作包含恢复延时。', 'Allocations within an interval can run sequentially. Card actions include the manual resume delay.')}</p><ol className={styles.plan}>{winner.actions.map((a, k) => <li key={k}><time>{date(a.at)} – {date(a.end)}</time><span>{name(a.accountId)} · {a.cardId ? text('用卡并等待人工恢复', 'Use card and await manual resume') : `${a.consumed.toFixed(3)} ${text('加权周百分点', 'weighted points')}`}</span></li>)}</ol></details>
-      </>}
-      <details open><summary>{text('公式与假设', 'Formula and assumptions')}</summary><p className={styles.formula}>Qᵢ = max<sub>π : first = i</sub> Σ<sub>t,j</sub> wⱼ cⱼₜ ; i* = arg max<sub>i</sub> Qᵢ</p><p>{text('比较完整使用计划；w₅ₓ=1，w₂₀ₓ=2，c为实际消耗的周额度百分点。自然重置和用卡只补充库存，不直接计为收益。', 'Compare complete plans: w₅ₓ=1, w₂₀ₓ=2, and c is consumed weekly percentage points. Resets replenish capacity; only consumption contributes to the objective.')}</p><ul>{result.assumptions.map(a => <li key={a}>{a}</li>)}</ul><p className={styles.muted}>{result.slots} {text('事件区间', 'event intervals')} · {(result.elapsedMs / 1000).toFixed(2)}s · {date(result.computedAt)}</p></details>
-    </section>}
+    {!mobile && resultPanel}
   </section>
 }

@@ -1,0 +1,24 @@
+{
+  "measurements": [
+    {
+      "label": "before",
+      "height": 1689.5,
+      "ctaTop": 1764.5,
+      "scrollWidth": 390
+    },
+    {
+      "label": "after",
+      "height": 696.734375,
+      "ctaTop": 767.734375,
+      "scrollWidth": 390
+    }
+  ],
+  "checks": [
+    "account disclosure",
+    "result first",
+    "comparison accessible",
+    "formula accessible",
+    "320/390/844/1440 no overflow"
+  ],
+  "errors": []
+}
