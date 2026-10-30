@@ -61,3 +61,32 @@ D1 合并并推送 master → D2 构建线上镜像 → D3 备份与替换 Keepe
 上线前发现并修复：真实账号只返回周窗口时不应强制存在短窗；补2项测试，42项相关测试及独立34项通过。未返回短窗的建模限制在页面明确展示。此修复使旧UI源码指纹失效，由新版本6ae70328及上线证据替代；原功能阶段验收记录保留。
 
 上线验收完成：版本6ae70328，Keeper healthy；7账号/5停用/2可参与；实际场景计算返回2行，路由状态与重置策略前后相同。主干后续仅增加验收文档，不改变部署代码。
+
+## 账号选择简化（2026-10-30）
+
+代码版本：6b2887d5。沿用既有任务分支与工作区，不更换基线。
+
+```mermaid
+flowchart LR
+ S1[选择与预览简化] --> S2[自检]
+ S2 --> S3[独立复验]
+ S3 --> S4[主干与部署]
+ S4 --> S5[线上验收]
+ style S1 fill:#b7e4c7
+ style S2 fill:#b7e4c7
+ style S3 fill:#b7e4c7
+ style S4 fill:#b7e4c7
+ style S5 fill:#fff
+```
+
+|编号|负责人|依赖|完成标准|状态|证据|轮次|
+|---|---|---|---|---|---|---|
+|S1|主Agent|既有功能|移除参数，预览所选账号三类时间|已完成|6b2887d5|1|
+|S2|主Agent|S1|相关测试、构建、lint通过|已完成|51项测试通过；构建通过；lint零错误、两条既有警告|1|
+|S3|ui_acceptance|S2|真实worker与移动端独立验证|已完成|simple/independent.md；R1失败保留，R2通过|2|
+|S4|主Agent|S3|主干推送、新Keeper就绪|已完成|6b2887d5；镜像keeper-account-planner-simple:20261030；线上bundle一致|1|
+|S5|ui_acceptance|S4|线上预览与计算实测|待验证|simple/production.md|2|
+
+部署备份：/opt/cpa-keeper/backups/planner-simple-6b2887d5-20261030/state.tgz。
+运行二进制SHA256：6dbb706d43d05fc4167c1cf49b6c339f7b24cb8cd7769e669376d1e2a9bdddbb。
+CPA容器启动时间未变：2026-10-29T16:51:37.306554445Z。
