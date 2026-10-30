@@ -26,7 +26,6 @@ export function validatePlannerInput(input: PlannerInput): string | null {
     if (!finite(a.remainingPercent) || a.remainingPercent < 0 || a.remainingPercent > 100 || !finite(a.resetAt) || a.resetAt <= input.now) return `${a.name}：周额度或下次重置时间缺失/过期。`
     if (!finite(a.observedAt) || input.now - a.observedAt > 15 * MINUTE || a.observedAt > input.now + MINUTE) return `${a.name}：额度快照已过期，请刷新额度后重读。`
     if (!finite(a.minimumPercent) || a.minimumPercent < 0 || a.minimumPercent >= 100) return `${a.name}：额度下限无效。`
-    if (a.accountExpiresAt != null && a.accountExpiresAt <= input.now) return `${a.name}：账号已到期。`
     if (a.stopAt !== null && (!finite(a.stopAt) || a.stopAt <= input.now)) return `${a.name}：已到停派时间。`
     if (a.shortWindowSeconds !== null) {
       if (!finite(a.shortWindowSeconds) || a.shortWindowSeconds <= 0 || a.shortWindowSeconds >= 604800 || !finite(a.shortRemainingPercent) || a.shortRemainingPercent < 0 || a.shortRemainingPercent > 100 || !finite(a.shortResetAt) || a.shortResetAt <= input.now) return `${a.name}：短时额度数据缺失/过期。`

@@ -17,7 +17,7 @@ const a: PlannerAccount={id:'a',name:'Alpha',plan:'pro-5x',weight:1,priority:0,r
 const result: PlannerResult={status:'optimal',message:'tested',ranking:[{accountId:'a',score:80,monthScore:40,lowScore:60,highScore:100,delta:0,actions:[]}],stable:true,tied:false,computedAt:now,slots:3,assumptions:[],elapsedMs:1}
 const button=(label:string)=>[...host.querySelectorAll('button')].find(e=>e.textContent===label)! as HTMLButtonElement
 async function click(label:string){await act(async()=>button(label).click())}
-async function select(){await act(async()=>host.querySelector<HTMLInputElement>('.accounts input, #planner-accounts + div input')!.click())}
+async function select(){await act(async()=>host.querySelector<HTMLInputElement>('details label input')!.click())}
 async function render(){await act(async()=>root.render(<AccountPlanner onAuthRequired={auth}/>))}
 beforeEach(()=>{vi.resetAllMocks();host=document.createElement('div');document.body.append(host);root=createRoot(host);vi.mocked(loadPlannerSnapshot).mockResolvedValue({accounts:[a],loadedAt:now});vi.mocked(runPlanner).mockReturnValue({promise:Promise.resolve(result),cancel:vi.fn()})})
 afterEach(async()=>{await act(async()=>root.unmount());host.remove()})
@@ -29,3 +29,6 @@ it('keeps missing expiry unknown, separate from the dispatch deadline',async()=>
 it('preserves selection on reload and propagates authorization failures',async()=>{await render();await select();await click('重读账号信息');expect(host.querySelectorAll('article')).toHaveLength(1);vi.mocked(loadPlannerSnapshot).mockRejectedValue(new ApiError('expired',401));await click('重读账号信息');expect(auth).toHaveBeenCalledOnce();expect(host.querySelector('[role=alert]')?.textContent).toBe('expired')})
 
 it('refreshes a stale selected snapshot before computing without enabling the account',async()=>{vi.mocked(loadPlannerSnapshot).mockResolvedValueOnce({accounts:[{...a,issues:['quota cache expired']}],loadedAt:now});vi.mocked(refreshPlannerAccounts).mockResolvedValue({accounts:[a],loadedAt:now});await render();await select();await click('计算优先账号');expect(refreshPlannerAccounts).toHaveBeenCalledWith(['a'],expect.any(AbortSignal));expect(runPlanner).toHaveBeenCalledOnce();expect(vi.mocked(runPlanner).mock.lastCall![0].accounts[0].disabled).toBe(false)})
+
+it('skips expired accounts and computes remaining selection',async()=>{vi.mocked(loadPlannerSnapshot).mockResolvedValue({accounts:[a,{...a,id:'expired',name:'Expired',accountExpiresAt:now-1}],loadedAt:now});await render();await click('全选');await click('计算优先账号');expect(vi.mocked(runPlanner).mock.lastCall![0].accounts.map(a=>a.id)).toEqual(['a','expired']);expect(host.textContent).not.toContain('已跳过已到期账号')})
+it('supports all inverse and clear selection',async()=>{vi.mocked(loadPlannerSnapshot).mockResolvedValue({accounts:[a,{...a,id:'b',name:'Beta'}],loadedAt:now});await render();await select();await click('反选');expect(host.querySelector('article')?.textContent).toContain('Beta');await click('全选');expect(host.querySelectorAll('article')).toHaveLength(2);await click('清空');expect(host.querySelectorAll('article')).toHaveLength(0)})

@@ -8,12 +8,12 @@ const page=await context.newPage();const errors=[];const mutations=[];
 page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(!['GET','HEAD'].includes(r.method())&&!r.url().endsWith('/quota/cache'))mutations.push(new URL(r.url()).pathname.replace(/credentials\/[^/]+/,'credentials/[account]'))});
 try {
  await page.goto('http://192.168.31.251:8318/planner',{waitUntil:'domcontentloaded'});
- await page.getByRole('button',{name:'重读账号快照'}).waitFor({timeout:120000});
- await page.waitForFunction(()=>!document.body.innerText.includes('正在读取账号和保护配置…'),{timeout:120000});
+ await page.getByRole('button',{name:'重读账号信息'}).waitFor({timeout:120000});
+ await page.waitForFunction(()=>!document.body.innerText.includes('正在读取账号信息…'),{timeout:120000});
  const count=await page.locator('#planner-accounts + div input[type=checkbox]').count();
  const selected=await page.locator('#planner-accounts + div input:checked').count();
  assert.equal(count,7);assert.ok(selected>=0);
-  await page.getByRole('button',{name:'计算优先账号',exact:true}).click();
+  await page.locator('#planner-accounts').click(); await page.locator('#planner-accounts + div input[type=checkbox]').first().check(); await page.getByRole('button',{name:'计算优先账号',exact:true}).click();
  await page.getByRole('heading',{name:/推荐账号：/}).waitFor({timeout:90000});
  assert.ok(await page.locator('section[aria-labelledby=planner-preview]').innerText().then(t=>t.includes('账号到期')));
  const rankingRows=await page.locator('section[aria-live=polite] tbody tr').count();assert.ok(rankingRows>0);

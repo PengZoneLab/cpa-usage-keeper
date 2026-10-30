@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Modal } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { ApiError } from '@/lib/api'
 import type { PlannerAccount, PlannerResult } from './types'
@@ -15,6 +16,7 @@ export function AccountPlanner({ onAuthRequired }: { onAuthRequired?: () => void
   const [result, setResult] = useState<PlannerResult | null>(null)
   const [busy, setBusy] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(true)
+  const [previewOpen, setPreviewOpen] = useState(false)
   const [respectProtection, setRespectProtection] = useState(false)
   const revision = useRef(0)
   const job = useRef<ReturnType<typeof runPlanner> | null>(null)
@@ -59,6 +61,9 @@ export function AccountPlanner({ onAuthRequired }: { onAuthRequired?: () => void
   const name = (id: string) => accounts.find(a => a.id === id)?.name ?? id
   const date = (time: number | null | undefined) => typeof time !== 'number' || !Number.isFinite(time) ? '未知' : new Date(time).toLocaleString('zh-CN', { hour12: false })
   const toggle = (id: string, checked: boolean) => { invalidate(); setSelected(v => checked ? [...v, id] : v.filter(value => value !== id)) }
+  const selectAll = () => { invalidate(); setSelected(accounts.map(a => a.id)) }
+  const invertSelection = () => { invalidate(); setSelected(accounts.filter(a => !selected.includes(a.id)).map(a => a.id)) }
+  const clearSelection = () => { invalidate(); setSelected([]) }
   const calculate = async () => {
     invalidate()
     setError('')
@@ -94,6 +99,11 @@ export function AccountPlanner({ onAuthRequired }: { onAuthRequired?: () => void
     {!loading && !accounts.length && <p>没有可用的 Codex 账号。请先同步账号。</p>}
     <details className={styles.panel} open={pickerOpen} onToggle={e => setPickerOpen(e.currentTarget.open)}>
       <summary id="planner-accounts">选择账号 <span className={styles.muted}>{selected.length}/{accounts.length}</span></summary>
+      <div className={styles.bulkActions} aria-label="批量选择">
+        <button type="button" onClick={selectAll} disabled={loading || selected.length === accounts.length}>全选</button>
+        <button type="button" onClick={invertSelection} disabled={loading || !accounts.length}>反选</button>
+        <button type="button" onClick={clearSelection} disabled={loading || !selected.length}>清空</button>
+      </div>
       <div className={styles.accounts}>{accounts.map(a => <label className={styles.account} key={a.id}>
         <input type="checkbox" checked={selected.includes(a.id)} disabled={loading} onChange={e => toggle(a.id, e.target.checked)} />
         <span className={styles.accountBody}><strong>{a.name}</strong><span>{a.plan || '未知方案'} · 周剩余 {a.remainingPercent === null ? '未知' : `${a.remainingPercent}%`}</span><small>{a.disabled ? '当前停用，仍可选择模拟' : '当前启用'}{a.protectionActive ? ' · 停派保护生效（可选约束）' : ''}</small></span>
@@ -101,6 +111,7 @@ export function AccountPlanner({ onAuthRequired }: { onAuthRequired?: () => void
     </details>
     <section className={styles.preview} aria-labelledby="planner-preview">
       <h2 id="planner-preview">已选账号预览 <span className={styles.muted}>{selectedAccounts.length} 个</span></h2>
+      <Button variant="secondary" onClick={() => setPreviewOpen(true)} disabled={!selectedAccounts.length}>查看预览</Button>
       {!selectedAccounts.length && <p className={styles.muted}>勾选账号后，在这里预览到期和刷新时间。</p>}
       <div className={styles.previewList}>{selectedAccounts.map(a => <article key={a.id} className={styles.previewItem}>
         <div className={styles.previewHeading}><strong>{a.name}</strong><button type="button" onClick={() => toggle(a.id, false)} aria-label={`移除 ${a.name}`}>移除</button></div>
@@ -111,6 +122,12 @@ export function AccountPlanner({ onAuthRequired }: { onAuthRequired?: () => void
         {a.issues.length > 0 && <small className={styles.error}>{a.issues.join('；')}</small>}
       </article>)}</div>
     </section>
+    <Modal open={previewOpen} onClose={() => setPreviewOpen(false)} title={`已选账号预览（${selectedAccounts.length} 个）`} footer={<Button onClick={() => setPreviewOpen(false)}>关闭预览</Button>}>
+        <div className={styles.modalBody}>{selectedAccounts.map(a => <article key={a.id} className={styles.previewItem}>
+          <div className={styles.previewHeading}><strong>{a.name}</strong><button type="button" onClick={() => toggle(a.id, false)} aria-label={`移除 ${a.name}`}>移除</button></div>
+          <dl><div><dt>账号到期</dt><dd>{date(a.accountExpiresAt)}</dd></div><div><dt>下次额度刷新</dt><dd>{date(a.resetAt)}</dd></div><div><dt>剩余周额度</dt><dd>{a.remainingPercent === null ? '未知' : `${a.remainingPercent}%`} · 权重 {a.weight ?? '未知'}</dd></div><div><dt>重置卡到期</dt><dd>{a.cards.length ? a.cards.map((c, i) => <span className={styles.cardExpiry} key={c.id}>卡 {i + 1}：{date(c.expiresAt)}</span>) : '无可用重置卡'}</dd></div></dl>
+        </article>)}</div>
+    </Modal>
     <label className={styles.check}><input type="checkbox" checked={respectProtection} onChange={e => { invalidate(); setRespectProtection(e.target.checked) }} />计算时考虑当前停派保护</label>
     <p className={styles.muted}>仅计算方案，不更改账号状态或使用重置卡。未知时间会如实标注。</p>
     <div className={styles.actions}><Button onClick={() => void calculate()} disabled={loading || busy || selected.length === 0} loading={busy}>{busy ? '计算中…' : '计算优先账号'}</Button>{busy && <Button variant="secondary" onClick={invalidate}>取消</Button>}</div>

@@ -82,3 +82,15 @@
 .previewItem dt { color: var(--text-secondary); }
 .previewItem dd { margin: 0; overflow-wrap: anywhere; }
 .cardExpiry { display: block; }
+
+.bulkActions { display: flex; gap: 12px; margin: 0 0 8px; }
+.bulkActions button { min-height: 44px; padding: 8px 16px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-secondary); color: var(--text-primary); cursor: pointer; }
+.bulkActions button:disabled { opacity: .45; cursor: default; }
+.modalBody { min-width: 0; }
+.modalBody strong { overflow-wrap: anywhere; }
+@media (max-width: 760px) {
+ .previewList { display: none; }
+ .preview { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+ .preview h2 { margin: 0; }
+ .accounts { max-height: 38dvh; }
+}
