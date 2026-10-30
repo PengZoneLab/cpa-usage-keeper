@@ -1,0 +1,18 @@
+{
+  "measurements": [
+    {
+      "label": "independent",
+      "height": 696.734375,
+      "ctaTop": 767.734375,
+      "scrollWidth": 390
+    }
+  ],
+  "checks": [
+    "account disclosure",
+    "result first",
+    "comparison accessible",
+    "formula accessible",
+    "320/390/844/1440 no overflow"
+  ],
+  "errors": []
+}

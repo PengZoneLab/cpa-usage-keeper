@@ -1,0 +1,10 @@
+{
+  "accounts": 7,
+  "selected": 2,
+  "rankingRows": 2,
+  "errors": [],
+  "mutations": [],
+  "realBackend": true,
+  "scenarioDemand": 20,
+  "modelRequestsSent": 0
+}
