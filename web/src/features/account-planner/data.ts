@@ -1,4 +1,4 @@
-import { ApiError, fetchUsageIdentities, fetchUsageQuotaCache, fetchCodexQuotaHistory, fetchUsageEvents } from '@/lib/api'
+import { ApiError, fetchUsageIdentities, fetchUsageQuotaCache, fetchCodexQuotaHistory, fetchUsageEvents, refreshUsageQuotas, fetchUsageQuotaRefreshTask } from '@/lib/api'
 import { quotaFloorRequest, type QuotaFloor } from '@/lib/quotaFloor'
 import { resetScheduleRequest, type ResetSchedule } from '@/lib/resetSchedule'
 import type { UsageQuotaCheckResponse, UsageQuotaRow, CodexQuotaHistoryResponse, UsageEvent } from '@/lib/types'
@@ -56,13 +56,12 @@ export async function loadPlannerSnapshot(signal?: AbortSignal): Promise<Planner
     const expiryStops = schedule?.auto_before_expiry ? cards.map(c => c.expiresAt - 13 * 60 * 1000) : []
     const rawFloor = floorResult as (QuotaFloor & { reset_dispatch_until?: string | null }) | null
     const dispatchTimes = [asMs(rawFloor?.dispatch_until), asMs(rawFloor?.reset_dispatch_until)].filter((t): t is number => t !== null)
-    if (rawFloor?.paused || rawFloor?.manual_hold) issues.push('额度停派保护生效')
     const stopCandidates = [...taskStops, ...expiryStops, ...dispatchTimes]
     const short = quota?.quota.find(r => r.key.startsWith('rate_limit.') && (seconds(r) ?? 0) > 0 && seconds(r)! < WEEK)
     if (short?.allowed === false || short?.limitReached === true) issues.push('短窗当前限流')
     if (short && (remaining(short) === null || asMs(short.resetAt) === null)) issues.push('短窗额度信息缺失')
     const disabled = Boolean(identity.disabled)
-    return { id: identity.identity, name: identity.displayName ?? identity.alias ?? identity.name ?? identity.identity, plan, weight: planWeight(plan), priority: identity.priority ?? 0, remainingPercent: q.remaining, resetAt: q.resetAt, observedAt: refreshedAt, disabled, issues, cards, stopAt: stopCandidates.length ? Math.min(...stopCandidates) : null, minimumPercent: floorResult?.minimum_percent ?? 0, shortRemainingPercent: remaining(short), shortResetAt: asMs(short?.resetAt), shortWindowSeconds: short ? seconds(short) ?? null : null }
+    return { id: identity.identity, name: identity.displayName ?? identity.alias ?? identity.name ?? identity.identity, plan, weight: planWeight(plan), priority: identity.priority ?? 0, accountExpiresAt: asMs(identity.active_until), protectionActive: Boolean(rawFloor?.paused || rawFloor?.manual_hold), remainingPercent: q.remaining, resetAt: q.resetAt, observedAt: refreshedAt, disabled, issues, cards, stopAt: stopCandidates.length ? Math.min(...stopCandidates) : null, minimumPercent: floorResult?.minimum_percent ?? 0, shortRemainingPercent: remaining(short), shortResetAt: asMs(short?.resetAt), shortWindowSeconds: short ? seconds(short) ?? null : null }
   })
   return { accounts, loadedAt: now }
 }
@@ -122,4 +121,21 @@ export async function estimatePlannerDemand(accounts: PlannerAccount[], model: s
   for (const [a,b] of intervals.slice(1)) { if (a <= end) end = Math.max(end,b); else { duration += end-start; start=a; end=b } }
   duration += end-start
   return { dailyDemand: points / (duration / 86400000), message: '来自近7天最多30个纯净完整区间的加权周百分点；历史限额可能压低需求，仅用于情景预测' }
+}
+
+/** Refresh quota queries only; never calls card consume, status, or priority APIs. */
+export async function refreshPlannerAccounts(ids: string[], signal?: AbortSignal): Promise<PlannerSnapshot> {
+  const queued = await refreshUsageQuotas(ids, signal)
+  if ((queued.rejected?.length ?? 0) > 0) throw new Error('部分账号额度查询未受理，请重读账号信息后重试')
+  for (let round = 0; round < 30; round++) {
+    signal?.throwIfAborted()
+    const tasks = await Promise.all(ids.map(id => fetchUsageQuotaRefreshTask(id, signal)))
+    if (tasks.every(t => t.status === 'completed' || t.status === 'failed')) return loadPlannerSnapshot(signal)
+    await new Promise<void>((resolve, reject) => {
+      const abort = () => { clearTimeout(timer); reject(new DOMException('已取消', 'AbortError')) }
+      const timer = setTimeout(() => { signal?.removeEventListener('abort', abort); resolve() }, 1000)
+      signal?.addEventListener('abort', abort, { once: true })
+    })
+  }
+  throw new Error('额度查询尚未完成，请稍后重试')
 }

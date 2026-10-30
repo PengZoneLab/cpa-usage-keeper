@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { estimatePlannerDemand, loadPlannerSnapshot } from './data'
-import { ApiError, fetchUsageIdentities, fetchUsageQuotaCache, fetchCodexQuotaHistory, fetchUsageEvents } from '@/lib/api'
+import { estimatePlannerDemand, loadPlannerSnapshot, refreshPlannerAccounts } from './data'
+import { ApiError, fetchUsageIdentities, fetchUsageQuotaCache, fetchCodexQuotaHistory, fetchUsageEvents, refreshUsageQuotas, fetchUsageQuotaRefreshTask } from '@/lib/api'
 import { quotaFloorRequest } from '@/lib/quotaFloor'
 import { resetScheduleRequest } from '@/lib/resetSchedule'
 import type { UsageIdentity, CodexQuotaHistoryResponse, UsageEvent, UsageEventsResponse } from '@/lib/types'
 import type { PlannerAccount } from './types'
-vi.mock('@/lib/api', async importOriginal => ({ ...await importOriginal<object>(), fetchUsageIdentities: vi.fn(), fetchUsageQuotaCache: vi.fn(), fetchCodexQuotaHistory: vi.fn(), fetchUsageEvents: vi.fn() }))
+vi.mock('@/lib/api', async importOriginal => ({ ...await importOriginal<object>(), fetchUsageIdentities: vi.fn(), fetchUsageQuotaCache: vi.fn(), fetchCodexQuotaHistory: vi.fn(), fetchUsageEvents: vi.fn(), refreshUsageQuotas: vi.fn(), fetchUsageQuotaRefreshTask: vi.fn() }))
 vi.mock('@/lib/quotaFloor', () => ({ quotaFloorRequest: vi.fn() }))
 vi.mock('@/lib/resetSchedule', () => ({ resetScheduleRequest: vi.fn() }))
 const now = Date.parse('2026-10-30T00:00:00Z')
@@ -63,7 +63,7 @@ describe('read-only snapshot', () => {
  })
  it('preserves both dispatch deadlines and paused/manual hold protection', async () => {
   vi.mocked(quotaFloorRequest).mockResolvedValue({minimum_percent:0,dispatch_until:iso(3600000),reset_dispatch_until:iso(120000),paused:true,manual_hold:true,remaining_percent:50,checked_at:iso(0),state:'paused'} as Awaited<ReturnType<typeof quotaFloorRequest>>)
-  const a=(await loadPlannerSnapshot()).accounts[0]; expect(a.stopAt).toBe(now+120000); expect(a.issues).toContain('额度停派保护生效')
+  const a=(await loadPlannerSnapshot()).accounts[0]; expect(a.stopAt).toBe(now+120000); expect(a.protectionActive).toBe(true); expect(a.issues).not.toContain('额度停派保护生效')
  })
  it('flags active limits despite positive displayed remaining quota', async () => {
   const cache=await vi.mocked(fetchUsageQuotaCache)([]); cache.items[0].quota!.quota[0].allowed=false; cache.items[0].quota!.quota[2].limitReached=true
@@ -75,6 +75,10 @@ describe('read-only snapshot', () => {
   const floor=await vi.mocked(quotaFloorRequest)('a')
   vi.mocked(quotaFloorRequest).mockImplementation(async()=>{ active++; peak=Math.max(peak,active); await new Promise(resolve=>setTimeout(resolve,1)); active--; return floor })
   await loadPlannerSnapshot(); expect(peak).toBeLessThanOrEqual(8); expect(peak).toBeGreaterThan(1)
+ })
+ it('maps account expiry from active_until, not dispatch_until', async () => {
+  vi.mocked(fetchUsageIdentities).mockResolvedValue({identities:[{...identity(),active_until:iso(3*86400000)}]})
+  expect((await loadPlannerSnapshot()).accounts[0].accountExpiresAt).toBe(now+3*86400000)
  })
  it('scheduled card stop begins three minutes before execution', async () => {
   vi.mocked(resetScheduleRequest).mockResolvedValue({auto_before_expiry:false,credits:[],tasks:[{credit_id:'c',state:'pending',attempts:0,result_code:'',scheduled_at:iso(600000),expires_at:iso(7200000),source:'scheduled',updated_at:iso(0)}],checked_at:iso(0),error:''})
@@ -116,5 +120,16 @@ describe('historical demand', () => {
   vi.mocked(fetchCodexQuotaHistory).mockResolvedValue(history)
   vi.mocked(fetchUsageEvents).mockResolvedValue({...response('a'),events:[]})
   expect((await estimatePlannerDemand(accounts,'gpt','high')).dailyDemand).toBeNull()
+ })
+})
+
+describe('refresh selected quota only',()=>{
+ it('accepts null rejected list, polls completed quota, then rereads protections',async()=>{
+  vi.mocked(refreshUsageQuotas).mockResolvedValue({tasks:[{authIndex:'a'}],rejected:null,accepted:1,skipped:0,limit:10} as unknown as Awaited<ReturnType<typeof refreshUsageQuotas>>)
+  vi.mocked(fetchUsageQuotaRefreshTask).mockResolvedValue({authIndex:'a',status:'completed'})
+  expect((await refreshPlannerAccounts(['a'])).accounts).toHaveLength(1)
+  expect(refreshUsageQuotas).toHaveBeenCalledWith(['a'],undefined)
+  expect(quotaFloorRequest).toHaveBeenCalledWith('a')
+  expect(resetScheduleRequest).toHaveBeenCalledWith('a')
  })
 })

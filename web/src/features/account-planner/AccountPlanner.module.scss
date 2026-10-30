@@ -70,3 +70,15 @@
   .result h2 { font-size: 18px; }
   .result details { margin: 4px 0; }
 }
+
+.preview { margin: 12px 0 4px; }
+.preview h2 { font-size: 17px; margin: 0 0 10px; }
+.previewItem { display: grid; gap: 4px; padding: 10px 12px; border-bottom: 1px solid var(--border-color); font-size: 13px; }
+.previewItem span { color: var(--text-secondary); overflow-wrap: anywhere; }
+.previewHeading { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.previewHeading button { background: none; color: var(--text-secondary); border: 0; padding: 10px 12px; min-height: 44px; cursor: pointer; }
+.previewItem dl { margin: 0; display: grid; gap: 7px; }
+.previewItem dl > div { display: grid; grid-template-columns: 100px 1fr; gap: 8px; }
+.previewItem dt { color: var(--text-secondary); }
+.previewItem dd { margin: 0; overflow-wrap: anywhere; }
+.cardExpiry { display: block; }

@@ -1,61 +1,35 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { Button } from '@/components/ui/Button'
 import { ApiError } from '@/lib/api'
 import type { PlannerAccount, PlannerResult } from './types'
 import { runPlanner } from './runner'
-import { loadPlannerSnapshot, estimatePlannerDemand } from './data'
+import { loadPlannerSnapshot, refreshPlannerAccounts } from './data'
+import { automaticPlannerInput, automaticAssumptions } from './automatic'
 import styles from './AccountPlanner.module.scss'
 
-export const plannerMonthEnd = (now = new Date()) => new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime()
-export const plannerDate = (time: number) => {
-  const d = new Date(time)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-const initialEnd = () => plannerDate(plannerMonthEnd() + 7 * 86400_000)
-const supported = (a: PlannerAccount) => !a.disabled && a.weight !== null && a.issues.length === 0
-
 export function AccountPlanner({ onAuthRequired }: { onAuthRequired?: () => void }) {
-  const { t, i18n } = useTranslation()
-  const mobile = useMediaQuery('(max-width: 760px)')
-  const english = (i18n.resolvedLanguage || i18n.language).startsWith('en')
-  const text = (zh: string, en: string) => english ? en : zh
   const [accounts, setAccounts] = useState<PlannerAccount[]>([])
   const [selected, setSelected] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [result, setResult] = useState<PlannerResult | null>(null)
   const [busy, setBusy] = useState(false)
-  const [estimating, setEstimating] = useState(false)
-  const [loadedAt, setLoadedAt] = useState<number | null>(null)
-  const [model, setModel] = useState('')
-  const [effort, setEffort] = useState('')
-  const [daily, setDaily] = useState('')
-  const [uncertainty, setUncertainty] = useState('20')
-  const [endDate, setEndDate] = useState(initialEnd)
-  const [slotHours, setSlotHours] = useState('6')
-  const [allowCards, setAllowCards] = useState(false)
-  const [resume, setResume] = useState('10')
-  const [demandSource, setDemandSource] = useState('')
-  const [short, setShort] = useState<Record<string, string>>({})
+  const [pickerOpen, setPickerOpen] = useState(true)
+  const [respectProtection, setRespectProtection] = useState(false)
   const revision = useRef(0)
   const job = useRef<ReturnType<typeof runPlanner> | null>(null)
-  const estimateRequest = useRef<AbortController | null>(null)
   const snapshotRequest = useRef<AbortController | null>(null)
   const mounted = useRef(false)
-
+  const quotaRequest = useRef<AbortController | null>(null)
   const invalidate = useCallback(() => {
     revision.current++
     job.current?.cancel()
+    quotaRequest.current?.abort()
+    quotaRequest.current = null
     job.current = null
-    estimateRequest.current?.abort()
-    estimateRequest.current = null
     setBusy(false)
-    setEstimating(false)
     setResult(null)
   }, [])
-
   const load = useCallback(async () => {
     invalidate()
     snapshotRequest.current?.abort()
@@ -67,11 +41,7 @@ export function AccountPlanner({ onAuthRequired }: { onAuthRequired?: () => void
       const snapshot = await loadPlannerSnapshot(controller.signal)
       if (controller.signal.aborted || !mounted.current) return
       setAccounts(snapshot.accounts)
-      setLoadedAt(snapshot.loadedAt)
-      setSelected(snapshot.accounts.filter(supported).map(a => a.id))
-      const dates = snapshot.accounts.flatMap(a => [a.resetAt ?? 0, ...a.cards.map(c => c.expiresAt)])
-      const lastEvent = Math.max(plannerMonthEnd(), ...dates)
-      setEndDate(plannerDate(Math.min(Date.now() + 61 * 86400_000, lastEvent + 7 * 86400_000)))
+      setSelected(previous => previous.filter(id => snapshot.accounts.some(a => a.id === id)))
     } catch (e) {
       if (controller.signal.aborted || !mounted.current) return
       if (e instanceof ApiError && e.status === 401) onAuthRequired?.()
@@ -80,125 +50,80 @@ export function AccountPlanner({ onAuthRequired }: { onAuthRequired?: () => void
       if (!controller.signal.aborted && mounted.current) setLoading(false)
     }
   }, [invalidate, onAuthRequired])
-
   useEffect(() => {
     mounted.current = true
     void load()
-    return () => {
-      mounted.current = false
-      // The mounted flag and aborted requests reject late completions.
-      job.current?.cancel()
-      estimateRequest.current?.abort()
-      snapshotRequest.current?.abort()
-    }
+    return () => { mounted.current = false; job.current?.cancel(); quotaRequest.current?.abort(); snapshotRequest.current?.abort() }
   }, [load])
-
   const selectedAccounts = useMemo(() => accounts.filter(a => selected.includes(a.id)), [accounts, selected])
   const name = (id: string) => accounts.find(a => a.id === id)?.name ?? id
-  const date = (time: number | null) => time === null ? text('未知', 'Unknown') : new Date(time).toLocaleString(i18n.language)
-  const parameter = (setter: (v: string) => void, value: string) => { invalidate(); setter(value) }
-
-  const estimate = async () => {
-    invalidate()
-    const id = revision.current
-    const controller = new AbortController()
-    estimateRequest.current = controller
-    setEstimating(true)
-    setError('')
-    try {
-      const value = await estimatePlannerDemand(selectedAccounts, model, effort, controller.signal)
-      if (!mounted.current || controller.signal.aborted || revision.current !== id) return
-      setDemandSource(value.message)
-      if (value.dailyDemand !== null) setDaily(value.dailyDemand.toFixed(3))
-    } catch (e) {
-      if (!mounted.current || controller.signal.aborted || revision.current !== id) return
-      if (e instanceof ApiError && e.status === 401) onAuthRequired?.()
-      setError(e instanceof Error ? e.message : String(e))
-    } finally {
-      if (mounted.current && revision.current === id) setEstimating(false)
-    }
-  }
-
+  const date = (time: number | null | undefined) => typeof time !== 'number' || !Number.isFinite(time) ? '未知' : new Date(time).toLocaleString('zh-CN', { hour12: false })
+  const toggle = (id: string, checked: boolean) => { invalidate(); setSelected(v => checked ? [...v, id] : v.filter(value => value !== id)) }
   const calculate = async () => {
     invalidate()
     setError('')
     const id = revision.current
-    // Date input denotes the final included local day; next midnight is exclusive.
-    const end = /^\d{4}-\d{2}-\d{2}$/.test(endDate) ? new Date(`${endDate}T00:00:00`) : new Date(NaN)
-    end.setDate(end.getDate() + 1)
     try {
-      job.current = runPlanner({ accounts: selectedAccounts, now: Date.now(), end: end.getTime(), monthEnd: plannerMonthEnd(),
-        dailyDemand: Number(daily), uncertaintyPercent: Number(uncertainty), slotHours: Number(slotHours), model, effort,
-        shortCapacity: Object.fromEntries(Object.entries(short).map(([k, v]) => [k, Number(v)])), allowCards, resumeDelayMinutes: Number(resume) })
       setBusy(true)
+      let targets = selectedAccounts
+      if (targets.some(a => a.issues.some(issue => /cache|缓存|重置时间已过/.test(issue)))) {
+        const controller = new AbortController()
+        quotaRequest.current = controller
+        const snapshot = await refreshPlannerAccounts(targets.map(a => a.id), controller.signal)
+        if (!mounted.current || controller.signal.aborted || id !== revision.current) return
+        setAccounts(snapshot.accounts)
+        targets = snapshot.accounts.filter(a => selected.includes(a.id))
+      }
+      job.current = runPlanner(automaticPlannerInput(targets, respectProtection))
       const answer = await job.current.promise
-      if (mounted.current && id === revision.current) setResult(answer)
+      if (mounted.current && id === revision.current) setResult({ ...answer, assumptions: [...automaticAssumptions(respectProtection), ...answer.assumptions] })
     } catch (e) {
-      if (mounted.current && id === revision.current && !(e instanceof DOMException && e.name === 'AbortError')) setError(String(e))
+      if (mounted.current && id === revision.current && !(e instanceof DOMException && e.name === 'AbortError')) { if (e instanceof ApiError && e.status === 401) onAuthRequired?.(); setError(String(e)) }
     } finally {
       if (mounted.current && id === revision.current) { job.current = null; setBusy(false) }
     }
   }
-
   const winner = result?.ranking[0]
-  const resultPanel = result && <section className={styles.result} aria-live="polite">
-      <h2>{winner ? `${text('推荐账号：', 'Recommended account: ')}${name(winner.accountId)}` : text('本次未得到账号推荐', 'No recommendation available')}</h2>
-      <p role={result.status === 'optimal' ? 'status' : 'alert'}>{result.message}</p>
-      {winner && <>
-        <p>{text('规划期总量', 'Planning horizon total')} <strong>{winner.score.toFixed(3)}</strong> · {text('本月剩余时间消耗', 'Remaining-month consumption')} {winner.monthScore.toFixed(3)} · {text('领先第二名', 'Margin over second place')} {(result.ranking[1]?.delta ?? 0).toFixed(3)} {text('加权周百分点', 'weighted points')}</p>
-        <details open={!mobile}><summary>{text('比较各账号方案', 'Compare account plans')}</summary><div className={styles.tableWrap}><table className={styles.table}><caption>{text('先使用每个账号时的最优总量', 'Optimal total when each account is used first')}</caption><thead><tr><th>{text('账号', 'Account')}</th><th>Qᵢ</th><th>{text('本月', 'This month')}</th><th>{text('低需求', 'Low demand')}</th><th>{text('高需求', 'High demand')}</th><th>{text('距首选差值', 'Gap to first')}</th></tr></thead><tbody>{result.ranking.map(r => <tr key={r.accountId}><th scope="row">{name(r.accountId)}</th><td>{r.score.toFixed(3)}</td><td>{r.monthScore.toFixed(3)}</td><td>{r.lowScore.toFixed(3)}</td><td>{r.highScore.toFixed(3)}</td><td>{r.delta.toFixed(3)}</td></tr>)}</tbody></table></div></details>
-        <details><summary>{text('使用计划', 'Usage plan')}</summary><p className={styles.muted}>{text('时间段内的额度分配可顺序执行，不表示同时使用账号。用卡动作包含恢复延时。', 'Allocations within an interval can run sequentially. Card actions include the manual resume delay.')}</p><ol className={styles.plan}>{winner.actions.map((a, k) => <li key={k}><time>{date(a.at)} – {date(a.end)}</time><span>{name(a.accountId)} · {a.cardId ? text('用卡并等待人工恢复', 'Use card and await manual resume') : `${a.consumed.toFixed(3)} ${text('加权周百分点', 'weighted points')}`}</span></li>)}</ol></details>
-      </>}
-      <details open={!mobile}><summary>{text('公式与假设', 'Formula and assumptions')}</summary><p className={styles.formula}>Qᵢ = max<sub>π : first = i</sub> Σ<sub>t,j</sub> wⱼ cⱼₜ ; i* = arg max<sub>i</sub> Qᵢ</p><p>{text('比较完整使用计划；w₅ₓ=1，w₂₀ₓ=2，c为实际消耗的周额度百分点。自然重置和用卡只补充库存，不直接计为收益。', 'Compare complete plans: w₅ₓ=1, w₂₀ₓ=2, and c is consumed weekly percentage points. Resets replenish capacity; only consumption contributes to the objective.')}</p><ul>{result.assumptions.map(a => <li key={a}>{a}</li>)}</ul><p className={styles.muted}>{result.slots} {text('事件区间', 'event intervals')} · {(result.elapsedMs / 1000).toFixed(2)}s · {date(result.computedAt)}</p></details>
-    </section>
   return <section className={styles.page} aria-labelledby="planner-title">
     <header className={styles.header}>
-      <div><h1 id="planner-title">{t('planner.title')}</h1><p className={styles.muted}>{t('planner.description')}</p></div>
-      <Button variant="secondary" onClick={() => void load()} disabled={loading}>{text('重读账号快照', 'Reload account snapshot')}</Button>
+      <div><h1 id="planner-title">账号优先规划</h1><p className={styles.muted}>选择账号，预览信息，计算优先使用顺序。</p></div>
+      <Button variant="secondary" onClick={() => void load()} disabled={loading}>重读账号信息</Button>
     </header>
-    <p className={styles.meta}>{text('5x 满周 = 100；20x 满周 = 200 加权周百分点。', 'Full weekly quota: 5x = 100; 20x = 200 weighted points.')} {loadedAt && <span>{text('读取时间：', 'Loaded: ')}{date(loadedAt)}</span>}</p>
-    {loading && <p role="status" aria-busy="true">{text('正在读取账号和保护配置…', 'Reading accounts and protection settings…')}</p>}
+    {loading && <p role="status" aria-busy="true">正在读取账号信息…</p>}
     {error && <p role="alert" className={styles.error}>{error}</p>}
-    {!loading && !accounts.length && <p>{text('没有可用的 Codex 账号。请先在认证文件中同步账号和额度。', 'No Codex accounts found. Sync accounts and quotas in Credentials first.')}</p>}
-    {mobile && resultPanel}
-    <div className={styles.grid}>
-      <details className={styles.panel} open={!mobile}>
-        <summary id="planner-accounts">{t('planner.accounts')} <span className={styles.muted}>{selected.length}/{accounts.length}</span>{mobile && <span className={styles.selectionSummary}>{selectedAccounts.map(a => a.name).join('、') || text('请选择账号', 'Choose accounts')}</span>}</summary>
-        <div className={styles.accounts}>{accounts.map(a => <label className={styles.account} key={a.id}>
-          <input type="checkbox" checked={selected.includes(a.id)} disabled={loading || !supported(a)} onChange={e => { invalidate(); setSelected(v => e.target.checked ? [...v, a.id] : v.filter(id => id !== a.id)) }} />
-          <span className={styles.accountBody}><strong>{a.name}</strong> <span className={styles.muted}>{a.plan || text('未知方案', 'Unknown plan')} · {text('权重', 'Weight')} {a.weight ?? '—'}</span>
-            <span>{text('周剩余', 'Weekly remaining')} {a.remainingPercent === null ? '—' : `${a.remainingPercent}%`} · {text('下次重置', 'Next reset')} {date(a.resetAt)}</span>
-            <span className={styles.muted}>{a.shortWindowSeconds === null && text('上游未提供短窗；仅按周额度规划。 ', 'No short window supplied; weekly-only model. ')}{text('卡片', 'Cards')} {a.cards.length} · {text('停派时间', 'Stop dispatch')} {a.stopAt === null ? text('未设置', 'Not set') : date(a.stopAt)}</span>
-            {a.cards.map((c, k) => <small key={c.id}>{text('卡', 'Card')} {k + 1} · {text('到期', 'Expires')} {date(c.expiresAt)}</small>)}
-            {a.disabled && <span className={styles.error}>{text('账号已停用', 'Account disabled')}</span>}
-            {a.issues.length > 0 && <span className={styles.error}>{a.issues.join('；')}</span>}
-          </span>
-        </label>)}</div>
-      </details>
-      <section className={styles.panel} aria-labelledby="planner-parameters">
-        <h2 id="planner-parameters">{t('planner.parameters')}</h2>
-        <div className={styles.form}>
-          <label>{text('模型', 'Model')}<input value={model} onChange={e => { parameter(setModel, e.target.value); setDemandSource('') }} placeholder="gpt-…" /></label>
-          <label>Effort<input value={effort} onChange={e => { parameter(setEffort, e.target.value); setDemandSource('') }} placeholder="high" /></label>
-          <label>{text('每日需求（5x周百分点）', 'Daily demand (weighted weekly points)')}<input type="number" min="0" max="10000" value={daily} onChange={e => { parameter(setDaily, e.target.value); setDemandSource(text('手填情景需求', 'Manual scenario demand')) }} /></label>
-          <div><Button variant="secondary" onClick={() => void estimate()} disabled={loading || estimating || !model || !effort || !selected.length}>{estimating ? text('估计中…', 'Estimating…') : text('从历史估计需求', 'Estimate from history')}</Button><p className={styles.muted}>{demandSource || (mobile ? text('历史不足时可手填', 'Enter demand if history is insufficient') : text('尚无需求预测。历史不足时可填写情景需求。', 'No demand estimate. Enter a scenario if history is insufficient.'))}</p></div>
-        </div>
-        <details className={styles.advanced} open={!mobile}><summary>{text('更多参数', 'More parameters')}</summary><div className={styles.form}>
-          <label>{text('不确定性 %', 'Demand uncertainty %')}<input type="number" min="0" max="99" value={uncertainty} onChange={e => parameter(setUncertainty, e.target.value)} /></label>
-          <label>{text('结束时间', 'Final included date')}<input type="date" value={endDate} onChange={e => parameter(setEndDate, e.target.value)} /></label>
-          <label>{text('时间槽（小时）', 'Decision grid (hours)')}<input type="number" min="1" max="24" value={slotHours} onChange={e => parameter(setSlotHours, e.target.value)} /></label>
-        </div></details>
-      </section>
-    </div>
-    <details className={styles.options} open={!mobile || selectedAccounts.some(a => a.shortWindowSeconds !== null && !short[a.id])}>
-      <summary>{text('短时额度与用卡场景', 'Short-window capacity and reset-card scenario')}</summary>
-      <p className={styles.muted}>{text('短窗百分比与周额度基准不同。请填写短窗满额相当于多少加权周百分点；这属于情景假设。', 'Short-window percentages use a different capacity. Enter the weighted weekly points represented by a full short window; this is a scenario assumption.')}</p>
-      <div className={styles.form}>{selectedAccounts.filter(a => a.shortWindowSeconds !== null).map(a => <label key={a.id}>{a.name}<input type="number" min="0" max="10000" value={short[a.id] ?? ''} placeholder={text('短窗满额对应的加权周百分点', 'Weighted points in a full short window')} onChange={e => { invalidate(); setShort(v => ({ ...v, [a.id]: e.target.value })) }} /></label>)}</div>
-      <label className={styles.check}><input type="checkbox" checked={allowCards} onChange={e => { invalidate(); setAllowCards(e.target.checked) }} />{text('推演用卡后人工恢复：假设周额度及短窗恢复100%', 'Model manual resumption after card use, assuming both windows reset to 100%')}</label>
-      <p className={styles.muted}>{text('只推演，不实际用卡或启用账号；现有停派截止始终有效。', 'Simulation only. No cards are consumed and no accounts are enabled. Existing stop deadlines remain binding.')}</p>
-      {allowCards && <label className={styles.delay}>{text('恢复延迟（分钟）', 'Manual resume delay (minutes)')}<input type="number" min="1" max="1440" value={resume} onChange={e => parameter(setResume, e.target.value)} /></label>}
+    {!loading && !accounts.length && <p>没有可用的 Codex 账号。请先同步账号。</p>}
+    <details className={styles.panel} open={pickerOpen} onToggle={e => setPickerOpen(e.currentTarget.open)}>
+      <summary id="planner-accounts">选择账号 <span className={styles.muted}>{selected.length}/{accounts.length}</span></summary>
+      <div className={styles.accounts}>{accounts.map(a => <label className={styles.account} key={a.id}>
+        <input type="checkbox" checked={selected.includes(a.id)} disabled={loading} onChange={e => toggle(a.id, e.target.checked)} />
+        <span className={styles.accountBody}><strong>{a.name}</strong><span>{a.plan || '未知方案'} · 周剩余 {a.remainingPercent === null ? '未知' : `${a.remainingPercent}%`}</span><small>{a.disabled ? '当前停用，仍可选择模拟' : '当前启用'}{a.protectionActive ? ' · 停派保护生效（可选约束）' : ''}</small></span>
+      </label>)}</div>
     </details>
-    <div className={styles.actions}><Button onClick={() => void calculate()} disabled={loading || busy || selected.length === 0} loading={busy}>{busy ? text('计算中…', 'Calculating…') : text('计算优先账号', 'Calculate priority account')}</Button>{busy && <Button variant="secondary" onClick={invalidate}>{text('取消', 'Cancel')}</Button>}</div>
-    {!mobile && resultPanel}
+    <section className={styles.preview} aria-labelledby="planner-preview">
+      <h2 id="planner-preview">已选账号预览 <span className={styles.muted}>{selectedAccounts.length} 个</span></h2>
+      {!selectedAccounts.length && <p className={styles.muted}>勾选账号后，在这里预览到期和刷新时间。</p>}
+      <div className={styles.previewList}>{selectedAccounts.map(a => <article key={a.id} className={styles.previewItem}>
+        <div className={styles.previewHeading}><strong>{a.name}</strong><button type="button" onClick={() => toggle(a.id, false)} aria-label={`移除 ${a.name}`}>移除</button></div>
+        <dl><div><dt>账号到期</dt><dd>{date(a.accountExpiresAt)}</dd></div><div><dt>下次额度刷新</dt><dd>{date(a.resetAt)}</dd></div><div><dt>剩余周额度</dt><dd>{a.remainingPercent === null ? '未知' : `${a.remainingPercent}%`} · 权重 {a.weight ?? '未知'}</dd></div>
+          <div><dt>重置卡到期</dt><dd>{a.cards.length ? a.cards.map((c, i) => <span className={styles.cardExpiry} key={c.id}>卡 {i + 1}：{date(c.expiresAt)}</span>) : '无可用重置卡'}</dd></div>
+        </dl>
+        {(a.disabled || a.protectionActive) && <small className={styles.muted}>当前停派状态不会限制勾选；是否计入计算由下方开关决定。</small>}
+        {a.issues.length > 0 && <small className={styles.error}>{a.issues.join('；')}</small>}
+      </article>)}</div>
+    </section>
+    <label className={styles.check}><input type="checkbox" checked={respectProtection} onChange={e => { invalidate(); setRespectProtection(e.target.checked) }} />计算时考虑当前停派保护</label>
+    <p className={styles.muted}>仅计算方案，不更改账号状态或使用重置卡。未知时间会如实标注。</p>
+    <div className={styles.actions}><Button onClick={() => void calculate()} disabled={loading || busy || selected.length === 0} loading={busy}>{busy ? '计算中…' : '计算优先账号'}</Button>{busy && <Button variant="secondary" onClick={invalidate}>取消</Button>}</div>
+    {result && <section className={styles.result} aria-live="polite">
+      <h2>{winner ? `推荐账号：${name(winner.accountId)}` : '本次未得到账号推荐'}</h2>
+      <p role={result.status === 'optimal' ? 'status' : 'alert'}>{result.message}</p>
+      <p className={styles.muted}>没有手填或预测真实需求。下面比较的是自动生成的容量消耗情景，不代表真实未来用量。</p>
+      {winner && <>
+        <p>情景内总量 <strong>{winner.score.toFixed(3)}</strong> · 领先第二名 {(result.ranking[1]?.delta ?? 0).toFixed(3)} 个加权周百分点</p>
+        <details><summary>比较各账号方案</summary><div className={styles.tableWrap}><table className={styles.table}><thead><tr><th>账号</th><th>Qᵢ</th><th>本月</th><th>低需求</th><th>高需求</th><th>距首选差值</th></tr></thead><tbody>{result.ranking.map(r => <tr key={r.accountId}><th scope="row">{name(r.accountId)}</th><td>{r.score.toFixed(3)}</td><td>{r.monthScore.toFixed(3)}</td><td>{r.lowScore.toFixed(3)}</td><td>{r.highScore.toFixed(3)}</td><td>{r.delta.toFixed(3)}</td></tr>)}</tbody></table></div></details>
+        <details><summary>使用计划</summary><ol className={styles.plan}>{winner.actions.map((a, k) => <li key={k}><time>{date(a.at)} – {date(a.end)}</time><span>{name(a.accountId)} · {a.cardId ? '模拟用卡并等待人工恢复' : `${a.consumed.toFixed(3)} 个加权周百分点`}</span></li>)}</ol></details>
+      </>}
+      <details><summary>为什么推荐这个账号</summary><p className={styles.formula}>Qᵢ = max Σ wⱼcⱼₜ（先使用账号 i）；i* = arg max Qᵢ</p><p>5x 权重1，20x权重2。只计算实际消耗，不把恢复库存直接算成收益。</p><ul>{result.assumptions.map(a => <li key={a}>{a}</li>)}</ul></details>
+    </section>}
   </section>
 }

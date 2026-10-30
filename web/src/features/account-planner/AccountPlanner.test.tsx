@@ -2,56 +2,30 @@
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { AccountPlanner, plannerDate, plannerMonthEnd } from './AccountPlanner'
-import { loadPlannerSnapshot, estimatePlannerDemand } from './data'
+import { AccountPlanner } from './AccountPlanner'
+import { loadPlannerSnapshot, refreshPlannerAccounts } from './data'
 import { runPlanner } from './runner'
 import { ApiError } from '@/lib/api'
 import type { PlannerAccount, PlannerResult } from './types'
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
-vi.mock('./data', () => ({ loadPlannerSnapshot: vi.fn(), estimatePlannerDemand: vi.fn() }))
+vi.mock('./data', () => ({ loadPlannerSnapshot: vi.fn(), refreshPlannerAccounts: vi.fn() }))
 vi.mock('./runner', () => ({ runPlanner: vi.fn() }))
-vi.mock('react-i18next', () => ({ initReactI18next: {type: '3rdParty', init() {}}, useTranslation: () => ({ t: (k: string) => k, i18n: {language:'zh'} }) }))
 let root: Root, host: HTMLDivElement
 const auth = vi.fn()
-const a: PlannerAccount = {id:'a',name:'Alpha',plan:'pro-5x',weight:1,priority:0,remainingPercent:50,resetAt:Date.now()+86400_000,observedAt:Date.now(),disabled:false,issues:[],cards:[],stopAt:null,minimumPercent:0,shortRemainingPercent:null,shortResetAt:null,shortWindowSeconds:null}
-const result: PlannerResult = {status:'optimal',message:'tested',ranking:[{accountId:'a',score:80,monthScore:40,lowScore:60,highScore:100,delta:0,actions:[]}],stable:true,tied:false,computedAt:Date.now(),slots:3,assumptions:[],elapsedMs:1}
-const button = (label:string) => [...host.querySelectorAll('button')].find(e => e.textContent===label)! as HTMLButtonElement
-const field = (label:string) => [...host.querySelectorAll('label')].find(e => e.textContent===label)!.querySelector('input')!
-async function change(label:string, value:string) { await act(async()=>{const el=field(label); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value')!.set!.call(el,value);el.dispatchEvent(new Event('input',{bubbles:true}))}) }
-async function click(label:string) { await act(async()=>button(label).click()) }
-async function render() { await act(async()=>root.render(<AccountPlanner onAuthRequired={auth}/>)) }
-beforeEach(()=>{vi.resetAllMocks();host=document.createElement('div');document.body.append(host);root=createRoot(host);vi.mocked(loadPlannerSnapshot).mockResolvedValue({accounts:[a],loadedAt:Date.now()});vi.mocked(runPlanner).mockReturnValue({promise:Promise.resolve(result),cancel:vi.fn()})})
+const now=Date.parse('2026-10-30T00:00:00Z')
+const a: PlannerAccount={id:'a',name:'Alpha',plan:'pro-5x',weight:1,priority:0,remainingPercent:50,resetAt:now+86400_000,observedAt:now,disabled:true,protectionActive:true,issues:[],cards:[{id:'c1',expiresAt:now+2*86400_000},{id:'c2',expiresAt:now+3*86400_000}],stopAt:now-1000,minimumPercent:20,accountExpiresAt:now+10*86400_000,shortRemainingPercent:null,shortResetAt:null,shortWindowSeconds:null}
+const result: PlannerResult={status:'optimal',message:'tested',ranking:[{accountId:'a',score:80,monthScore:40,lowScore:60,highScore:100,delta:0,actions:[]}],stable:true,tied:false,computedAt:now,slots:3,assumptions:[],elapsedMs:1}
+const button=(label:string)=>[...host.querySelectorAll('button')].find(e=>e.textContent===label)! as HTMLButtonElement
+async function click(label:string){await act(async()=>button(label).click())}
+async function select(){await act(async()=>host.querySelector<HTMLInputElement>('.accounts input, #planner-accounts + div input')!.click())}
+async function render(){await act(async()=>root.render(<AccountPlanner onAuthRequired={auth}/>))}
+beforeEach(()=>{vi.resetAllMocks();host=document.createElement('div');document.body.append(host);root=createRoot(host);vi.mocked(loadPlannerSnapshot).mockResolvedValue({accounts:[a],loadedAt:now});vi.mocked(runPlanner).mockReturnValue({promise:Promise.resolve(result),cancel:vi.fn()})})
 afterEach(async()=>{await act(async()=>root.unmount());host.remove()})
-it('invalidates displayed results for every editable calculation input',async()=>{
- await render(); await click('计算优先账号'); expect(host.textContent).toContain('推荐账号：Alpha')
- await change('时间槽（小时）','12');expect(host.textContent).not.toContain('推荐账号：Alpha')
- await click('计算优先账号'); await change('结束时间','');expect(host.textContent).not.toContain('推荐账号：Alpha');expect(host.textContent).toContain('计算优先账号')
-})
-it('cancels work and ignores late results after a parameter change',async()=>{
- let resolve!:(r:PlannerResult)=>void;const cancel=vi.fn();vi.mocked(runPlanner).mockReturnValue({promise:new Promise(r=>resolve=r),cancel})
- await render();await click('计算优先账号');await change('模型','other');expect(cancel).toHaveBeenCalledOnce()
- await act(async()=>resolve(result));expect(host.textContent).not.toContain('推荐账号：Alpha')
-})
-it('aborts stale historical estimates and handles authorization failures',async()=>{
- let resolve!:(r:{dailyDemand:number|null;message:string})=>void
- vi.mocked(estimatePlannerDemand).mockReturnValue(new Promise(r=>resolve=r))
- await render();await change('模型','gpt');await change('Effort','high');await click('从历史估计需求')
- const signal=vi.mocked(estimatePlannerDemand).mock.calls[0][3]!
- await change('Effort','low');expect(signal.aborted).toBe(true)
- await act(async()=>resolve({dailyDemand:777,message:'stale'}));expect(field('每日需求（5x周百分点）').value).toBe('')
- vi.mocked(estimatePlannerDemand).mockRejectedValue(new ApiError('expired',401));await click('从历史估计需求');expect(auth).toHaveBeenCalledOnce();expect(host.textContent).toContain('expired')
-})
-it('reloads and rejects stale/unknown accounts without any mutations',async()=>{
- vi.mocked(loadPlannerSnapshot).mockResolvedValueOnce({accounts:[a,{...a,id:'b',name:'Unknown',weight:null,issues:['unknown']}],loadedAt:Date.now()})
- await render(); const boxes=host.querySelectorAll<HTMLInputElement>('input[type=checkbox]');expect(boxes[0].checked).toBe(true);expect(boxes[1].disabled).toBe(true)
- await click('重读账号快照');expect(loadPlannerSnapshot).toHaveBeenCalledTimes(2)
-})
-it('uses local dates and an exclusive next-month boundary',()=>{
- const local=new Date(2026,9,31,23,59,59,999)
- expect(plannerDate(local.getTime())).toBe('2026-10-31')
- expect(plannerMonthEnd(local)).toBe(new Date(2026,10,1).getTime())
-})
-it('renders empty/load-error states and propagates snapshot 401',async()=>{
- vi.mocked(loadPlannerSnapshot).mockRejectedValueOnce(new ApiError('expired',401));await render();expect(auth).toHaveBeenCalledOnce();expect(host.querySelector('[role=alert]')?.textContent).toBe('expired')
- vi.mocked(loadPlannerSnapshot).mockResolvedValueOnce({accounts:[],loadedAt:Date.now()});await click('重读账号快照');expect(host.textContent).toContain('没有可用的 Codex 账号')
-})
+it('only exposes account selection and optional protection, without plan parameters',async()=>{await render();expect(host.querySelectorAll('input:not([type=checkbox])')).toHaveLength(0);expect(host.textContent).not.toContain('Plan parameters');expect(button('计算优先账号').disabled).toBe(true)})
+it('allows stopped accounts and previews every distinct expiry and refresh time',async()=>{await render();await select();const preview=host.querySelector('[aria-labelledby=planner-preview]')!;expect(preview.textContent).toContain('Alpha');for(const label of ['账号到期','下次额度刷新','重置卡到期','卡 1','卡 2'])expect(preview.textContent).toContain(label);await click('计算优先账号');expect(runPlanner).toHaveBeenCalledOnce();expect(vi.mocked(runPlanner).mock.calls[0][0].accounts[0].disabled).toBe(false);expect(host.textContent).toContain('推荐账号：Alpha')})
+it('enforces protection only when opted in and invalidates the old recommendation',async()=>{await render();await select();await click('计算优先账号');await act(async()=>{const labels=[...host.querySelectorAll('label')];labels.find(e=>e.textContent==='计算时考虑当前停派保护')!.querySelector<HTMLInputElement>('input')!.click()});expect(host.textContent).not.toContain('推荐账号：Alpha');await click('计算优先账号');expect(vi.mocked(runPlanner).mock.lastCall![0].accounts[0]).toMatchObject({disabled:true,minimumPercent:20})})
+it('removing a selected account cancels work and prevents a late recommendation',async()=>{let resolve!:(r:PlannerResult)=>void;const cancel=vi.fn();vi.mocked(runPlanner).mockReturnValue({promise:new Promise(r=>resolve=r),cancel});await render();await select();await click('计算优先账号');await click('移除');expect(cancel).toHaveBeenCalledOnce();await act(async()=>resolve(result));expect(host.textContent).not.toContain('推荐账号：Alpha');expect(host.querySelectorAll('article')).toHaveLength(0)})
+it('keeps missing expiry unknown, separate from the dispatch deadline',async()=>{vi.mocked(loadPlannerSnapshot).mockResolvedValue({accounts:[{...a,accountExpiresAt:null}],loadedAt:now});await render();await select();const row=[...host.querySelectorAll('dl > div')].find(el=>el.querySelector('dt')?.textContent==='账号到期');expect(row?.querySelector('dd')?.textContent).toBe('未知')})
+it('preserves selection on reload and propagates authorization failures',async()=>{await render();await select();await click('重读账号信息');expect(host.querySelectorAll('article')).toHaveLength(1);vi.mocked(loadPlannerSnapshot).mockRejectedValue(new ApiError('expired',401));await click('重读账号信息');expect(auth).toHaveBeenCalledOnce();expect(host.querySelector('[role=alert]')?.textContent).toBe('expired')})
+
+it('refreshes a stale selected snapshot before computing without enabling the account',async()=>{vi.mocked(loadPlannerSnapshot).mockResolvedValueOnce({accounts:[{...a,issues:['quota cache expired']}],loadedAt:now});vi.mocked(refreshPlannerAccounts).mockResolvedValue({accounts:[a],loadedAt:now});await render();await select();await click('计算优先账号');expect(refreshPlannerAccounts).toHaveBeenCalledWith(['a'],expect.any(AbortSignal));expect(runPlanner).toHaveBeenCalledOnce();expect(vi.mocked(runPlanner).mock.lastCall![0].accounts[0].disabled).toBe(false)})
