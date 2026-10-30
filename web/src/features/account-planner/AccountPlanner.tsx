@@ -14,6 +14,7 @@ export function AccountPlanner({ onAuthRequired }: { onAuthRequired?: () => void
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [result, setResult] = useState<PlannerResult | null>(null)
+  const [resultOpen, setResultOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(true)
   const [previewOpen, setPreviewOpen] = useState(false)
@@ -81,7 +82,7 @@ export function AccountPlanner({ onAuthRequired }: { onAuthRequired?: () => void
       }
       job.current = runPlanner(automaticPlannerInput(targets, respectProtection))
       const answer = await job.current.promise
-      if (mounted.current && id === revision.current) setResult({ ...answer, assumptions: [...automaticAssumptions(respectProtection), ...answer.assumptions] })
+      if (mounted.current && id === revision.current) { setResult({ ...answer, assumptions: [...automaticAssumptions(respectProtection), ...answer.assumptions] }); setResultOpen(true) }
     } catch (e) {
       if (mounted.current && id === revision.current && !(e instanceof DOMException && e.name === 'AbortError')) { if (e instanceof ApiError && e.status === 401) onAuthRequired?.(); setError(String(e)) }
     } finally {
@@ -89,6 +90,7 @@ export function AccountPlanner({ onAuthRequired }: { onAuthRequired?: () => void
     }
   }
   const winner = result?.ranking[0]
+  const winnerAccount = winner ? accounts.find(a => a.id === winner.accountId) : null
   return <section className={styles.page} aria-labelledby="planner-title">
     <header className={styles.header}>
       <div><h1 id="planner-title">账号优先规划</h1><p className={styles.muted}>选择账号，预览信息，计算优先使用顺序。</p></div>
@@ -130,9 +132,20 @@ export function AccountPlanner({ onAuthRequired }: { onAuthRequired?: () => void
     </Modal>
     <label className={styles.check}><input type="checkbox" checked={respectProtection} onChange={e => { invalidate(); setRespectProtection(e.target.checked) }} />计算时考虑当前停派保护</label>
     <p className={styles.muted}>仅计算方案，不更改账号状态或使用重置卡。未知时间会如实标注。</p>
+    {result && <Button variant="secondary" onClick={() => setResultOpen(true)}>查看推荐结果</Button>}
     <div className={styles.actions}><Button onClick={() => void calculate()} disabled={loading || busy || selected.length === 0} loading={busy}>{busy ? '计算中…' : '计算优先账号'}</Button>{busy && <Button variant="secondary" onClick={invalidate}>取消</Button>}</div>
-    {result && <section className={styles.result} aria-live="polite">
+    {result && <Modal open={resultOpen} onClose={() => setResultOpen(false)} title="账号优先推荐" footer={<Button onClick={() => setResultOpen(false)}>关闭推荐</Button>}><section className={styles.result} aria-live="polite">
       <h2>{winner ? `推荐账号：${name(winner.accountId)}` : '本次未得到账号推荐'}</h2>
+      {winner && winnerAccount && <div className={styles.keyFactors} aria-label="推荐关键因素">
+        <strong>为什么推荐</strong><p>先用此账号，当前情景可消耗 {winner.score.toFixed(2)} 个加权周百分点{result?.ranking[1] ? `，比下一名多 ${result.ranking[1].delta.toFixed(2)}` : ''}。</p>{result?.tied && <p>多个账号收益并列，这不是唯一最优账号。</p>}
+        <div className={styles.factorGrid}>
+          <span>剩余周额度 <b>{winnerAccount.remainingPercent === null ? '未知' : `${winnerAccount.remainingPercent}%`}</b></span>
+          <span>额度权重 <b>{winnerAccount.weight ?? '未知'}</b></span>
+          <span>下次刷新 <b>{date(winnerAccount.resetAt)}</b></span>
+          <span>最近卡到期 <b>{winnerAccount.cards.length ? date(Math.min(...winnerAccount.cards.map(c => c.expiresAt))) : '无可用卡'}</b></span>
+        </div>
+        <p className={styles.muted}>这些因子共同进入计算：分别模拟先用每个账号，比较整个规划期内可消耗的加权周额度。账号到期时间不直接判定不可用。</p>
+      </div>}
       <p role={result.status === 'optimal' ? 'status' : 'alert'}>{result.message}</p>
       <p className={styles.muted}>没有手填或预测真实需求。下面比较的是自动生成的容量消耗情景，不代表真实未来用量。</p>
       {winner && <>
@@ -141,6 +154,6 @@ export function AccountPlanner({ onAuthRequired }: { onAuthRequired?: () => void
         <details><summary>使用计划</summary><ol className={styles.plan}>{winner.actions.map((a, k) => <li key={k}><time>{date(a.at)} – {date(a.end)}</time><span>{name(a.accountId)} · {a.cardId ? '模拟用卡并等待人工恢复' : `${a.consumed.toFixed(3)} 个加权周百分点`}</span></li>)}</ol></details>
       </>}
       <details><summary>为什么推荐这个账号</summary><p className={styles.formula}>Qᵢ = max Σ wⱼcⱼₜ（先使用账号 i）；i* = arg max Qᵢ</p><p>5x 权重1，20x权重2。只计算实际消耗，不把恢复库存直接算成收益。</p><ul>{result.assumptions.map(a => <li key={a}>{a}</li>)}</ul></details>
-    </section>}
+    </section></Modal>}
   </section>
 }

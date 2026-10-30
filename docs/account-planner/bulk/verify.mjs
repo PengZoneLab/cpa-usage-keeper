@@ -1,0 +1,40 @@
+import {createRequire} from 'node:module';
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+const require=createRequire(import.meta.url);
+const {chromium}=require(process.env.PLANNER_PLAYWRIGHT || '/tmp/cpa-planner-browser/node_modules/playwright');
+const browser=await chromium.launch({channel:'chrome',headless:true});
+const context=await browser.newContext({viewport:{width:1440,height:1000},timezoneId:'Asia/Shanghai'});
+await context.addInitScript(()=>localStorage.setItem('cpa-usage-keeper-language','zh'));
+const page=await context.newPage();
+const now=Date.now(); const iso=ms=>new Date(now+ms).toISOString();
+const requests=[],errors=[];const checks=[];let mode='normal';
+page.on('pageerror',e=>errors.push(e.message));
+await context.route('**/api/**',async route=>{
+ const p=new URL(route.request().url()).pathname;const method=route.request().method();requests.push({method,path:p});
+ let body={};let status=200;
+ if(p.endsWith('/startup/status'))body={phase:'ready',message:'Ready',progress:null};
+ else if(p.endsWith('/auth/session'))body={authenticated:mode!=='401',role:'admin'};
+ else if(p.endsWith('/status'))body={running:true,timezone:'Asia/Shanghai'};
+ else if(p.endsWith('/version'))body={version:'fixture'};
+ else if(p.endsWith('/usage/api-keys/options'))body={options:[]};
+ else if(p.endsWith('/usage/identities'))body={identities:mode==='empty'?[]:['a','b','bad'].map((id,i)=>({identity:id,name:i===0?'Alpha 5x':i===1?'Beta 20x':'Unknown',auth_type:1,type:'codex',disabled:i===0,active_until:iso(i===0?-86400000:10*86400000),is_deleted:false,subscription:{provider:'codex',plan:i===0?'pro-5x':i===1?'pro-20x':'pro'}}))};
+ else if(p.endsWith('/quota/cache'))body={items:['a','b','bad'].map(id=>({auth_index:id,status:'completed',refreshed_at:iso(0),quota:{quota:[{key:'rate_limit.secondary_window',window:{seconds:604800},usedPercent:id==='a'?70:20,resetAt:iso(id==='a'?86400_000:604800_000)}]}}))};
+ else if(p.endsWith('/quota-floor')){if(mode==='401'){status=401;body={error:'unauthorized'}}else body={minimum_percent:0,paused:true,manual_hold:false}};
+ if(p.endsWith('/reset-schedule'))body={auto_before_expiry:false,credits:[{id:'c',status:'available',expiresAt:iso(172800_000)}],tasks:[],error:''};
+ await route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)});
+});
+try{
+ await page.goto('http://127.0.0.1:5196/planner'); await page.getByText('Alpha 5x',{exact:true}).first().waitFor();
+ assert.equal(await page.locator('input:not([type=checkbox])').count(),0);
+ const boxes=page.locator('#planner-accounts').locator('..').locator('input'); assert.equal(await boxes.first().isDisabled(),false); await boxes.first().check(); await boxes.nth(1).check();
+ assert.ok(await page.locator('section[aria-labelledby=planner-preview]').innerText().then(t=>t.includes('账号到期')));
+ await page.getByRole('button',{name:'清空',exact:true}).click(); assert.equal(await boxes.filter({has:page.locator(':checked')}).count(),0); await page.getByRole('button',{name:'全选',exact:true}).click(); await page.getByRole('button',{name:'反选',exact:true}).click(); await boxes.first().check();await boxes.nth(1).check(); await page.getByRole('button',{name:'计算优先账号',exact:true}).click();
+ await page.getByRole('heading',{name:/推荐账号：|本次未得到账号推荐/}).waitFor({timeout:90000});
+ console.log(await page.locator('section[aria-live=polite]').innerText()); const rows=await page.locator('section[aria-live=polite] tbody tr').allTextContents(); assert.equal(rows.length,1);
+ await page.screenshot({path:'docs/account-planner/bulk/desktop.png',fullPage:true});
+ await page.setViewportSize({width:390,height:844});await page.screenshot({path:'docs/account-planner/bulk/mobile.png',fullPage:true});
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),390);
+ const protection=page.getByLabel('计算时考虑当前停派保护');await protection.check();assert.equal(await page.locator('section[aria-live=polite]').count(),0);
+ console.log(JSON.stringify({rows,errors,requests},null,2));
+}finally{await browser.close()}

@@ -1,0 +1,24 @@
+{
+  "checks": [
+    {
+      "bulk": true,
+      "selected": 7
+    },
+    {
+      "preview": true
+    },
+    {
+      "realCalculation": true
+    }
+  ],
+  "errors": [],
+  "writes": [
+    "/api/v1/quota/cache",
+    "/api/v1/quota/refresh",
+    "/api/v1/quota/cache"
+  ],
+  "bundle": [
+    "./assets/index-D7vD-O8B.js"
+  ],
+  "rankingRows": 7
+}
